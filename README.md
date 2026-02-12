@@ -54,7 +54,7 @@ graph LR
 - **Search**: Tavily API
 - **Framework**: LangChain + LangGraph
 - **API**: FastAPI (async, WebSocket support)
-- **Deployment**: Docker + Google Cloud Run
+- **Deployment**: Docker + Railway
 
 ---
 
@@ -95,7 +95,7 @@ docker-compose up --build
 
 ### Production Deployment
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete GCP Cloud Run deployment guide.
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete Railway deployment guide.
 
 ---
 
@@ -205,7 +205,7 @@ pytest --cov=src --cov-report=html
 - Active WebSocket connections
 - Vector DB query performance
 
-**Cloud Run metrics:**
+**Railway metrics:**
 - Request count, CPU, memory usage
 - Instance scaling events
 - Error logs with stack traces
@@ -214,12 +214,12 @@ pytest --cov=src --cov-report=html
 
 ## 🔐 Security
 
-- ✅ Input validation with Pydantic
-- ✅ Rate limiting (10 requests/minute per IP)
+- ✅ Input validation and sanitization
+- ✅ Rate limiting (10 req/min per IP)
 - ✅ CORS configured for allowed origins
-- ✅ Optional API key authentication
-- ✅ Secrets stored in GCP Secret Manager
-- ✅ HTTPS enforced on Cloud Run
+- ✅ API key authentication (X-API-Key header)
+- ✅ Secrets stored as Railway environment variables
+- ✅ HTTPS enforced on Railway
 
 **Enable API key auth:**
 ```bash
@@ -237,7 +237,7 @@ API_KEYS=your-generated-key
 ## 💰 Cost Optimization
 
 **Free Tier Eligible:**
-- 2M requests/month FREE on Cloud Run
+- 2M requests/month FREE on Railway
 - Groq API: FREE tier available
 - Tavily API: 1K free searches/month
 - Local embeddings: No API costs
@@ -268,7 +268,7 @@ MAX_RESULTS=5  # Default search results
 
 ## 📚 Documentation
 
-- **[Deployment Guide](./DEPLOYMENT.md)** - Production deployment to GCP
+- **[Deployment Guide](./DEPLOYMENT.md)** - See [`DEPLOY.md`](DEPLOY.md) for detailed deployment instructions.
 - **[Quick Start](./QUICKSTART.md)** - Get started in 5 minutes
 - **[API Docs](http://localhost:8000/docs)** - Interactive Swagger UI
 - **[Architecture](./docs/architecture.md)** - System design deep dive
