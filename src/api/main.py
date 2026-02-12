@@ -7,6 +7,11 @@ from typing import Optional
 import logging
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from groq import Groq
 from tavily import TavilyClient
 
