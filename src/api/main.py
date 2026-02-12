@@ -61,6 +61,7 @@ async def startup_event():
     logger.info("AI Research Agent API starting up...")
     logger.info("Groq API configured: ✓")
     logger.info("Tavily API configured: ✓")
+    logger.info("Model: llama-3.3-70b-versatile")
     logger.info("Docs available at: /docs")
 
 @app.get("/health")
@@ -146,7 +147,7 @@ Provide a well-structured, informative answer that synthesizes the information f
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             temperature=0.7,
             max_tokens=2000,
         )
