@@ -32,3 +32,9 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Internal docs (keep only README.md public)
+RAILWAY_DEPLOY.md
+DEMO_SCRIPT.md
+*_guide.md
+*_plan.md
