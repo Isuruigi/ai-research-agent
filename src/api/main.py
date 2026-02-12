@@ -1,5 +1,6 @@
 """FastAPI application"""
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -14,10 +15,27 @@ import logging
 import uuid
 from datetime import datetime
 import asyncio
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# API Key Security
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+# Get API key from environment (set in Railway/deployment)
+VALID_API_KEY = os.getenv("API_KEY", "your-secret-api-key-change-this")
+
+async def get_api_key(api_key: str = Security(api_key_header)):
+    """Validate API key"""
+    if api_key == VALID_API_KEY:
+        return api_key
+    raise HTTPException(
+        status_code=403,
+        detail="Invalid or missing API Key. Include X-API-Key header."
+    )
 
 # Initialize FastAPI
 app = FastAPI(
@@ -107,7 +125,11 @@ async def metrics():
 
 @app.post("/research", response_model=ResearchResponse)
 @limiter.limit("10/minute")
-async def research_endpoint(request: Request, req: ResearchRequest):
+async def research_endpoint(
+    request: Request, 
+    req: ResearchRequest,
+    api_key: str = Depends(get_api_key)
+):
     """
     Execute research query
     

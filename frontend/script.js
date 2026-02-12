@@ -1,5 +1,6 @@
 // API Configuration
 const API_URL = 'http://localhost:8000';
+const API_KEY = 'your-secret-api-key-change-this'; // Set this in production
 let sessionId = null;
 let chatHistory = [];
 
@@ -105,6 +106,7 @@ async function sendMessage() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-API-Key': API_KEY
             },
             body: JSON.stringify(requestBody)
         });
