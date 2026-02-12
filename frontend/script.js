@@ -1,7 +1,9 @@
 // API Configuration
-const API_URL = 'http://localhost:8000';
-const API_KEY = 'your-secret-api-key-change-this'; // Set this in production
-let sessionId = null;
+const API_URL = 'https://ai-research-agent-production-2fee.up.railway.app';
+const API_KEY = 'your-api-key-here'; // Replace with your actual API key
+const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+
+let currentSessionId = null;
 let chatHistory = [];
 
 // Initialize
@@ -96,8 +98,8 @@ async function sendMessage() {
         };
 
         // Only include session_id if it exists
-        if (sessionId) {
-            requestBody.session_id = sessionId;
+        if (currentSessionId) {
+            requestBody.session_id = currentSessionId;
         }
 
         // Call API
@@ -133,7 +135,7 @@ async function sendMessage() {
         removeResearchStatus(statusId);
 
         // Store session ID
-        sessionId = data.session_id;
+        currentSessionId = data.session_id;
 
         // Add assistant response
         addMessage('assistant', data.response, data.sources);
@@ -276,7 +278,7 @@ function getDomain(url) {
 
 // Start new chat
 function startNewChat() {
-    sessionId = null;
+    currentSessionId = null;
     document.getElementById('messages').innerHTML = '';
     document.getElementById('welcomeScreen').style.display = 'flex';
     document.getElementById('userInput').value = '';
