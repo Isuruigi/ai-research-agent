@@ -20,5 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY .env.example .env
 
-# Expose port
-EXPOSE 8000
+# Expose port (7860 for HF Spaces, 8000 for local/other platforms)
+EXPOSE 7860
+
+# Run application
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
