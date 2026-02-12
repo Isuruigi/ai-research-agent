@@ -1,0 +1,52 @@
+# CRITICAL: Pin NumPy to avoid 2.x incompatibility
+numpy<2.0.0
+
+# CRITICAL: Install CPU-only PyTorch 2.4+ FIRST
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.0+cpu
+torchvision==0.19.0+cpu
+torchaudio==2.4.0+cpu
+
+# Pin transformers to avoid breaking changes
+transformers>=4.40.0,<4.50.0
+
+# Core LangChain
+langchain>=0.1.0
+langchain-groq>=0.1.0
+langchain-community>=0.0.20
+langchain-huggingface>=0.0.1
+langgraph>=0.0.20
+
+# Vector DB (ChromaDB with minimal deps)
+chromadb>=0.4.0
+
+# Web Search
+tavily-python>=0.3.0
+
+# API Framework  
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+
+# Data validation
+pydantic>=2.5.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+
+# Utilities
+python-dotenv>=1.0.0
+tenacity>=8.2.0
+beautifulsoup4>=4.12.0
+redis>=5.0.0
+
+# Rate limiting & monitoring
+slowapi>=0.1.9
+prometheus-client>=0.20.0
+
+# Sentence transformers (will use CPU PyTorch installed above)
+sentence-transformers>=2.3.0
+
+# Groq SDK
+groq>=0.4.0
