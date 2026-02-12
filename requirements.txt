@@ -1,3 +1,9 @@
+# CRITICAL: Install CPU-only PyTorch FIRST to prevent CUDA bloat
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+torchaudio==2.1.0+cpu
+
 # Core LangChain
 langchain>=0.1.0
 langchain-groq>=0.1.0
@@ -32,7 +38,7 @@ redis>=5.0.0
 slowapi>=0.1.9
 prometheus-client>=0.20.0
 
-# Sentence transformers (CPU only - no torch dependency here)
+# Sentence transformers (will use CPU PyTorch installed above)
 sentence-transformers>=2.3.0
 
 # Groq SDK
