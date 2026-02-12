@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Research Agent - Powered by LangGraph</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="url(#gradient1)" />
+                        <path d="M16 8L20 12L16 16L12 12L16 8Z" fill="white" opacity="0.9" />
+                        <path d="M16 16L20 20L16 24L12 20L16 16Z" fill="white" opacity="0.7" />
+                        <defs>
+                            <linearGradient id="gradient1" x1="0" y1="0" x2="32" y2="32">
+                                <stop offset="0%" style="stop-color:#667eea" />
+                                <stop offset="100%" style="stop-color:#764ba2" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1>Research Agent</h1>
+                </div>
+            </div>
+
+            <div class="sidebar-content">
+                <button class="new-chat-btn" onclick="startNewChat()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Research
+                </button>
+
+                <div class="chat-history">
+                    <div class="history-section">
+                        <h3>Recent</h3>
+                        <div id="recentChats"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">AI</div>
+                    <div class="user-details">
+                        <div class="user-name">Research Mode</div>
+                        <div class="user-status">Powered by LangGraph</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome Screen -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-content">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🔬</div>
+                        <h1 class="welcome-title">
+                            <span style="color: var(--text-primary);">Web Research Agent</span>
+                        </h1>
+                        <p class="welcome-subtitle">Not just another chatbot. I search the web in real-time, extract
+                            content from multiple sources, and synthesize comprehensive research reports with citations.
+                        </p>
+
+                        <div class="feature-cards">
+                            <div class="feature-card">
+                                <div class="feature-icon">🌐</div>
+                                <h3>Live Web Search</h3>
+                                <p>Real-time search across the internet with Tavily API</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📄</div>
+                                <h3>Content Extraction</h3>
+                                <p>Scrapes and analyzes content from top sources</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📚</div>
+                                <h3>Source Citations</h3>
+                                <p>Every answer includes links to original sources</p>
+                            </div>
+                        </div>
+
+                        <div class="example-prompts">
+                            <h3>Try asking</h3>
+                            <div class="prompt-chips">
+                                <button class="prompt-chip"
+                                    onclick="setQuery('What are the latest breakthroughs in quantum computing?')">
+                                    What are the latest breakthroughs in quantum computing?
+                                </button>
+                                <button class="prompt-chip"
+                                    onclick="setQuery('Explain how LangGraph works for building AI agents')">
+                                    Explain how LangGraph works for building AI agents
+                                </button>
+                                <button class="prompt-chip"
+                                    onclick="setQuery('What is the future of AI in healthcare?')">
+                                    What is the future of AI in healthcare?
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="messages" id="messages"></div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea id="userInput" placeholder="Ask a research question..." rows="1"
+                        onkeydown="handleKeyPress(event)"></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <span class="powered-by">Powered by LangGraph + RAG</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
