@@ -1,37 +1,14 @@
-// API Configuration
-const API_URL = 'https://ai-research-agent-production-2fee.up.railway.app';
-const API_KEY = 'your-api-key-here'; // Replace with your actual API key
-const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+// Configuration
+const API_URL = 'http://localhost:8000';  // Use local server for testing
+const API_KEY = 'your-secret-api-key-change-this'; // Match what you set in HF Spaces secrets
 
 let currentSessionId = null;
-let chatHistory = [];
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    autoResizeTextarea();
-    loadChatHistory();
-});
 
 // Auto-resize textarea
-function autoResizeTextarea() {
-    const textarea = document.getElementById('userInput');
-    textarea.addEventListener('input', () => {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-        updateSendButton();
-    });
-}
-
-// Update send button state
-function updateSendButton() {
-    const input = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    if (input.value.trim()) {
-        sendBtn.classList.add('active');
-    } else {
-        sendBtn.classList.remove('active');
-    }
-}
+document.getElementById('userInput').addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});
 
 // Handle Enter key
 function handleKeyPress(event) {
@@ -41,11 +18,60 @@ function handleKeyPress(event) {
     }
 }
 
-// Set query from prompt chips
-function setQuery(query) {
-    document.getElementById('userInput').value = query;
-    updateSendButton();
-    sendMessage();
+// Use example question
+function useExample(question) {
+    const input = document.getElementById('userInput');
+    input.value = question;
+    input.focus();
+
+    // Auto-resize textarea
+    input.style.height = 'auto';
+    input.style.height = (input.scrollHeight) + 'px';
+}
+
+// Start new chat
+function startNewChat() {
+    currentSessionId = null;
+    document.getElementById('messages').innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <h2>How can I help with your research today?</h2>
+            <p>Ask me to research any topic and I'll provide comprehensive, cited information.</p>
+            
+            <div class="example-questions">
+                <div class="example-card" onclick="useExample('What are the latest breakthroughs in quantum computing?')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>Latest breakthroughs in quantum computing</span>
+                </div>
+                <div class="example-card" onclick="useExample('Explain the impact of artificial intelligence on healthcare')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    <span>Impact of AI on healthcare</span>
+                </div>
+                <div class="example-card" onclick="useExample('What is climate change and how does it affect global ecosystems?')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    <span>Climate change and global ecosystems</span>
+                </div>
+                <div class="example-card" onclick="useExample('How does blockchain technology work and what are its applications?')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Blockchain technology and applications</span>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('userInput').value = '';
 }
 
 // Send message
@@ -55,282 +81,122 @@ async function sendMessage() {
 
     if (!query) return;
 
-    // Validate query length (API requires 10-500 characters)
-    if (query.length < 10) {
-        addMessage('assistant', '⚠️ Please enter a research question with at least 10 characters.');
-        return;
-    }
+    // Disable input
+    input.disabled = true;
+    document.getElementById('sendBtn').disabled = true;
 
-    if (query.length > 500) {
-        addMessage('assistant', '⚠️ Query is too long. Please keep it under 500 characters.');
-        return;
+    // Remove welcome message if present
+    const welcomeMsg = document.querySelector('.welcome-message');
+    if (welcomeMsg) {
+        welcomeMsg.remove();
     }
-
-    // Hide welcome screen
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    if (welcomeScreen) {
-        welcomeScreen.style.display = 'none';
-    }
-
-    // Clear input
-    input.value = '';
-    input.style.height = 'auto';
-    updateSendButton();
 
     // Add user message
     addMessage('user', query);
+    input.value = '';
+    input.style.height = 'auto';
 
-    // Add research status indicators
-    const statusId = addResearchStatus();
-
-    // Scroll to bottom
-    scrollToBottom();
+    // Add thinking indicator
+    const thinkingDiv = addThinkingIndicator();
 
     try {
-        // Update status: Searching web
-        updateResearchStatus(statusId, '🌐 Searching the web...');
-        await sleep(1000);
-
-        // Prepare request body
-        const requestBody = {
-            query: query,
-            max_results: 5
-        };
-
-        // Only include session_id if it exists
-        if (currentSessionId) {
-            requestBody.session_id = currentSessionId;
+        // Generate session ID if first message
+        if (!currentSessionId) {
+            currentSessionId = 'session_' + Date.now();
         }
 
-        // Call API
-        const startTime = Date.now();
         const response = await fetch(`${API_URL}/research`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': API_KEY
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                query: query,
+                session_id: currentSessionId,
+                max_results: 5
+            })
         });
 
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = errorData.detail || `HTTP ${response.status}`;
-            throw new Error(errorMsg);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        // Update status: Extracting content
-        updateResearchStatus(statusId, '📄 Extracting content from sources...');
-        await sleep(500);
 
         const data = await response.json();
 
-        // Update status: Synthesizing
-        updateResearchStatus(statusId, `📚 Synthesizing research report... (${elapsed}s)`);
-        await sleep(500);
+        // Remove thinking indicator
+        thinkingDiv.remove();
 
-        // Remove status indicator
-        removeResearchStatus(statusId);
-
-        // Store session ID
-        currentSessionId = data.session_id;
-
-        // Add assistant response
-        addMessage('assistant', data.response, data.sources);
-
-        // Save to history
-        saveChatHistory(query, data.response);
-
-        // Scroll to bottom
-        scrollToBottom();
+        // Add AI response
+        addMessage('ai', data.answer || 'I received your question but encountered an issue generating a response.');
 
     } catch (error) {
-        removeResearchStatus(statusId);
-        const errorMessage = error.message.includes('Failed to fetch')
-            ? '❌ Cannot connect to server. Make sure it\'s running on http://localhost:8000'
-            : `❌ Error: ${error.message}`;
-        addMessage('assistant', errorMessage);
-        scrollToBottom();
+        console.error('Error:', error);
+        thinkingDiv.remove();
+        addMessage('ai', 'Sorry, I encountered an error. Please try again.');
+    } finally {
+        // Re-enable input
+        input.disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        input.focus();
     }
 }
 
-// Sleep helper
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+// Parse simple markdown
+function parseMarkdown(text) {
+    // Convert **bold** to <strong>bold</strong>
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
-// Add research status
-function addResearchStatus() {
-    const messagesContainer = document.getElementById('messages');
-    const statusDiv = document.createElement('div');
-    const statusId = 'status-' + Date.now();
-    statusDiv.id = statusId;
-    statusDiv.className = 'message message-assistant';
-    statusDiv.innerHTML = `
-        <div class="message-avatar avatar-assistant">🔬</div>
-        <div class="message-content">
-            <div class="research-status" id="${statusId}-text">
-                🔍 Starting research...
-            </div>
-        </div>
-    `;
-    messagesContainer.appendChild(statusDiv);
-    scrollToBottom();
-    return statusId;
-}
+    // Convert *italic* to <em>italic</em>
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-// Update research status
-function updateResearchStatus(statusId, text) {
-    const statusElement = document.getElementById(statusId + '-text');
-    if (statusElement) {
-        statusElement.textContent = text;
-    }
-    scrollToBottom();
-}
+    // Convert line breaks
+    text = text.replace(/\n/g, '<br>');
 
-// Remove research status
-function removeResearchStatus(statusId) {
-    const statusDiv = document.getElementById(statusId);
-    if (statusDiv) {
-        statusDiv.remove();
-    }
+    return text;
 }
 
 // Add message to chat
-function addMessage(role, content, sources = []) {
-    const messagesContainer = document.getElementById('messages');
+function addMessage(role, content) {
+    const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message message-${role}`;
+    messageDiv.className = `message ${role}`;
 
-    if (role === 'user') {
-        messageDiv.innerHTML = `
-            <div class="message-content">
-                <div class="message-text">${escapeHtml(content)}</div>
-            </div>
-            <div class="message-avatar avatar-user">U</div>
-        `;
-    } else {
-        let sourcesHtml = '';
-        if (sources && sources.length > 0) {
-            sourcesHtml = `
-                <div class="sources-container">
-                    <div class="sources-title">📚 ${sources.length} Sources</div>
-                    ${sources.map((source, idx) => `
-                        <a href="${source}" target="_blank" class="source-link">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                <polyline points="15 3 21 3 21 9"></polyline>
-                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                            </svg>
-                            ${getDomain(source)}
-                        </a>
-                    `).join('')}
-                </div>
-            `;
-        }
+    const header = role === 'user' ? 'You' : 'AI Research Agent';
 
-        messageDiv.innerHTML = `
-            <div class="message-avatar avatar-assistant">🔬</div>
-            <div class="message-content">
-                <div class="message-text">${formatMarkdown(content)}</div>
-                ${sourcesHtml}
-            </div>
-        `;
-    }
+    // Parse markdown for AI messages
+    const formattedContent = role === 'ai' ? parseMarkdown(content) : content;
 
-    messagesContainer.appendChild(messageDiv);
+    messageDiv.innerHTML = `
+        <div class="message-header">${header}</div>
+        <div class="message-content">${formattedContent}</div>
+    `;
+
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    return messageDiv;
 }
 
-// Scroll to bottom
-function scrollToBottom() {
-    const chatContainer = document.getElementById('chatContainer');
-    setTimeout(() => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 100);
-}
-
-// Format markdown (simple)
-function formatMarkdown(text) {
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
-}
-
-// Escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Get domain from URL
-function getDomain(url) {
-    try {
-        const domain = new URL(url).hostname;
-        return domain.replace('www.', '');
-    } catch {
-        return url;
-    }
-}
-
-// Start new chat
-function startNewChat() {
-    currentSessionId = null;
-    document.getElementById('messages').innerHTML = '';
-    document.getElementById('welcomeScreen').style.display = 'flex';
-    document.getElementById('userInput').value = '';
-    updateSendButton();
-}
-
-// Save chat history
-function saveChatHistory(query, response) {
-    const chat = {
-        query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
-        timestamp: new Date().toISOString()
-    };
-
-    chatHistory.unshift(chat);
-    if (chatHistory.length > 10) {
-        chatHistory = chatHistory.slice(0, 10);
-    }
-
-    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-    renderChatHistory();
-}
-
-// Load chat history
-function loadChatHistory() {
-    const saved = localStorage.getItem('chatHistory');
-    if (saved) {
-        chatHistory = JSON.parse(saved);
-        renderChatHistory();
-    }
-}
-
-// Render chat history
-function renderChatHistory() {
-    const container = document.getElementById('recentChats');
-    if (!container) return;
-
-    if (chatHistory.length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No recent research</div>';
-        return;
-    }
-
-    container.innerHTML = chatHistory.map(chat => `
-        <div class="chat-history-item" style="
-            padding: 8px 12px;
-            margin-bottom: 4px;
-            border-radius: 6px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        " onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
-            ${chat.query}
+// Add thinking indicator
+function addThinkingIndicator() {
+    const messagesDiv = document.getElementById('messages');
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.className = 'message ai';
+    thinkingDiv.innerHTML = `
+        <div class="message-header">AI Research Agent</div>
+        <div class="thinking">
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
         </div>
-    `).join('');
+    `;
+    messagesDiv.appendChild(thinkingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    return thinkingDiv;
 }
+
+// Focus input on load
+window.addEventListener('load', () => {
+    document.getElementById('userInput').focus();
+});
