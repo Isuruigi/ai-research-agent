@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import time
+from datetime import datetime
 
 # Premium UI Configuration
 st.set_page_config(
@@ -16,8 +17,6 @@ if "results" not in st.session_state:
     st.session_state.results = []
 if "theme" not in st.session_state:
     st.session_state.theme = "light"
-if "input_query" not in st.session_state:
-    st.session_state.input_query = ""
 
 # Theme Palette Definition
 themes = {
@@ -32,7 +31,7 @@ themes = {
         "chip_bg": "#1c2128",
     },
     "light": {
-        "bg": "#f9f8f6",      # Claude-style cream/ivory
+        "bg": "#fcfaf8",      # Claude-style warm ivory
         "text": "#1a1a1a",
         "card_bg": "#ffffff",
         "border": "#e1e4e8",
@@ -42,6 +41,13 @@ themes = {
         "chip_bg": "#f0f0f0",
     }
 }
+
+# Dynamic Greeting based on time
+def get_greeting():
+    hour = datetime.now().hour
+    if hour < 12: return "Good morning, Isuru"
+    elif hour < 17: return "Good afternoon, Isuru"
+    else: return "Good evening, Isuru"
 
 # Theme Toggle in Sidebar
 with st.sidebar:
@@ -55,33 +61,41 @@ with st.sidebar:
     PROVIDER = st.selectbox("LLM Provider", ["groq", "openai", "anthropic"], index=0)
     
     st.markdown("---")
-    st.markdown("#### About the Engine")
-    st.write("Specialized in Deep Web Retrieval and Structured Synthesis.")
+    st.markdown("#### The Agent Difference")
+    st.info("Unlike standard chatbots, this engine performs real-time web retrieval, cross-references sources, and synthesizes long-form reports.")
 
 t = themes[st.session_state.theme]
 
-# Minimalist Premium CSS
+# Minimalist Premium CSS - Targeted for full coverage
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+    
+    /* Full Page Background */
+    .stApp {{
+        background-color: {t['bg']} !important;
+        color: {t['text']} !important;
+    }}
+    
+    [data-testid="stHeader"] {{
+        background-color: {t['bg']} !important;
+    }}
+
+    section.main {{
+        background-color: {t['bg']} !important;
+    }}
     
     html, body, [class*="css"] {{
         font-family: 'Inter', -apple-system, sans-serif;
     }}
     
-    .main {{
-        background-color: {t['bg']} !important;
-        color: {t['text']} !important;
-    }}
-    
     /* Hero Style */
     .hero-container {{
         text-align: center;
-        margin-top: 3rem;
+        margin-top: 2rem;
         margin-bottom: 2rem;
     }}
     .hero-title {{
-        font-family: 'Inter', serif;
         font-size: 3.2rem;
         font-weight: 500;
         letter-spacing: -0.02em;
@@ -89,21 +103,23 @@ st.markdown(f"""
         color: {t['text']};
     }}
     .hero-sub {{
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         color: {t['sub_text']};
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
     }}
     
-    /* Workspace Input - High Fidelity */
+    /* Workspace Input */
     .stTextArea textarea {{
         background-color: {t['input_bg']} !important;
         border: 1px solid {t['border']} !important;
         color: {t['text']} !important;
-        font-size: 1.15rem !important;
-        border-radius: 20px !important;
+        font-size: 1.1rem !important;
+        border-radius: 16px !important;
         padding: 1.5rem !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
-        line-height: 1.5 !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
     }}
     
     /* Buttons / Chips */
@@ -111,14 +127,10 @@ st.markdown(f"""
         background-color: {t['card_bg']};
         color: {t['text']};
         border: 1px solid {t['border']};
-        border-radius: 24px;
-        font-size: 0.9rem;
-        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        padding: 0.4rem 1.2rem;
         transition: all 0.2s ease;
-    }}
-    div.stButton > button:hover {{
-        background-color: {t['chip_bg']};
-        border-color: {t['sub_text']};
     }}
     
     .research-btn > div.stButton > button {{
@@ -127,71 +139,60 @@ st.markdown(f"""
         border: none !important;
         font-weight: 600 !important;
         padding: 0.7rem 2.5rem !important;
-        border-radius: 14px !important;
-        box-shadow: 0 4px 12px rgba(217, 119, 87, 0.2) !important;
+        border-radius: 12px !important;
     }}
     
     /* Report Card */
     .report-card {{
         background-color: {t['card_bg']};
         border: 1px solid {t['border']};
-        border-radius: 18px;
-        padding: 3rem;
-        margin-top: 1.5rem;
+        border-radius: 16px;
+        padding: 2.5rem;
+        margin-top: 1rem;
         color: {t['text']};
-        box-shadow: 0 8px 24px rgba(0,0,0,0.04);
-        line-height: 1.7;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.03);
     }}
     
-    /* Capabilities Row */
-    .cap-pill {{
-        background: {t['chip_bg']};
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        color: {t['sub_text']};
-        border: 1px solid {t['border']};
+    /* Sidebar Overrides */
+    [data-testid="stSidebar"] {{
+        background-color: {"#111111" if st.session_state.theme == "dark" else "#ffffff"} !important;
+        border-right: 1px solid {t['border']};
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# Main View - Minimalist Modern Header
+# Main View
 st.markdown(f"""
 <div class="hero-container">
-    <div class="hero-title">Good afternoon, Isuru</div>
-    <div class="hero-sub">Where should we focus our research today?</div>
+    <div class="hero-title">{get_greeting()}</div>
+    <div class="hero-sub">Experimental Research Agent — Built for deep retrieval, synthesized reporting, and multi-source verification.</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Suggested Research Chips (Minimalist row)
+# Suggested Research
 suggestions = [
-    "Latest breakthroughs in AI Agentic workflows 2026",
+    "Competitive analysis of AI research agents 2026",
     "Technical comparison of Gemini 1.5 vs Claude 3.5",
     "Future of autonomous scientific discovery"
 ]
 
+st.markdown("<div style='text-align: center; color: #8b949e; font-size: 0.85rem; margin-bottom: 12px;'>Start with a suggested topic</div>", unsafe_allow_html=True)
 s_cols = st.columns([1, 1, 1, 1, 1])
-if s_cols[1].button(suggestions[0]):
-    st.session_state.input_query = suggestions[0]
-    st.rerun()
-if s_cols[2].button(suggestions[1]):
-    st.session_state.input_query = suggestions[1]
-    st.rerun()
-if s_cols[3].button(suggestions[2]):
-    st.session_state.input_query = suggestions[2]
-    st.rerun()
+if s_cols[1].button(suggestions[0]): st.session_state.input_query = suggestions[0]; st.rerun()
+if s_cols[2].button(suggestions[2]): st.session_state.input_query = suggestions[2]; st.rerun() # Mixed for variety
+if s_cols[3].button(suggestions[1]): st.session_state.input_query = suggestions[1]; st.rerun()
 
-# Research Input Workspace
+# Research Input
 with st.container():
     query = st.text_area(
         "", 
-        value=st.session_state.input_query,
-        placeholder="Enter your research query...", 
-        key="research_input_area",
-        height=120
+        value=st.session_state.get("input_query", ""),
+        placeholder="What would you like to research deeply?", 
+        key="research_input",
+        height=100
     )
     
-    st.markdown('<div class="research-btn" style="text-align: center; margin-top: 15px;">', unsafe_allow_html=True)
+    st.markdown('<div class="research-btn" style="text-align: center; margin-top: 10px;">', unsafe_allow_html=True)
     if st.button("🚀 Start Deep Research", use_container_width=True):
         if query:
             st.session_state.input_query = query
@@ -204,6 +205,7 @@ with st.container():
                     )
                     if response.status_code == 200:
                         data = response.json()
+                        if "results" not in st.session_state: st.session_state.results = []
                         st.session_state.results.append({
                             "query": query,
                             "report": data.get('answer'),
@@ -216,17 +218,15 @@ with st.container():
                     st.error(f"Search failed: {e}")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Minimalist Progress Indicators
-st.markdown(f"""
-<div style="display: flex; justify-content: center; gap: 15px; margin-top: 2rem;">
-    <div class="cap-pill">🌐 Live Retrieval</div>
-    <div class="cap-pill">📑 Structured Synthesis</div>
-    <div class="cap-pill">🔍 Citation Check</div>
-</div>
-""", unsafe_allow_html=True)
+# Differentiator Section (Short and Sweet)
+st.markdown("<br>", unsafe_allow_html=True)
+c1, c2, c3 = st.columns(3)
+with c1: st.markdown(f"<div style='text-align:center; font-size:0.85rem; color:{t['sub_text']}'>🌐 **Live Retrieval**<br>Scans the web in real-time</div>", unsafe_allow_html=True)
+with c2: st.markdown(f"<div style='text-align:center; font-size:0.85rem; color:{t['sub_text']}'>📊 **Deep Synthesis**<br>Connects dots across sources</div>", unsafe_allow_html=True)
+with c3: st.markdown(f"<div style='text-align:center; font-size:0.85rem; color:{t['sub_text']}'>🔗 **Source Verified**<br>Every claim includes a link</div>", unsafe_allow_html=True)
 
 # Results Display
-if st.session_state.results:
+if "results" in st.session_state and st.session_state.results:
     st.markdown("<br><br>", unsafe_allow_html=True)
     for res in reversed(st.session_state.results):
         with st.container():
@@ -238,6 +238,6 @@ if st.session_state.results:
             if res['sources']:
                 st.markdown("<br>#### Verified Sources", unsafe_allow_html=True)
                 for s in res['sources']:
-                    st.markdown(f"• **{s.get('title', 'Ref')}**: [Read Full Context]({s.get('url', '#')})")
+                    st.markdown(f"• **{s.get('title', 'Ref')}**: [{s.get('url', 'Link')[:50]}...]({s.get('url', '#')})")
             st.markdown('</div>', unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
