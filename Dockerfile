@@ -18,9 +18,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
+COPY frontend/ ./frontend/
+COPY start.sh .
 
-# Expose port (7860 for HF Spaces, 8000 for local/other platforms)
+# Ensure start.sh is executable
+RUN chmod +x start.sh
+
+# Expose port 7860 for HF Spaces
 EXPOSE 7860
 
-# Run application
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run both API and Streamlit via start.sh
+CMD ["./start.sh"]
