@@ -5,10 +5,10 @@ import time
 
 # Premium UI Configuration
 st.set_page_config(
-    page_title="isuru01online | Research Workspace",
+    page_title="Intelligence Research Engine",
     page_icon="🔬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Minimalist Google/Claude-style CSS
@@ -25,257 +25,179 @@ st.markdown("""
         color: #f7f7f7;
     }
     
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #121212;
-        border-right: 1px solid #262626;
-    }
-    
-    .sidebar-nav-item {
-        padding: 0.6rem 0.8rem;
-        border-radius: 8px;
-        margin-bottom: 0.2rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
-        color: #e5e5e5;
-    }
-    .sidebar-nav-item:hover {
-        background-color: #1a1a1a;
-    }
-    .active-nav {
-        background-color: #262626;
-    }
-    
-    /* Quick Action Cards */
-    .quick-action-card {
-        background-color: #171717;
-        border: 1px solid #262626;
-        border-radius: 12px;
-        padding: 1.2rem;
+    /* Hero Section */
+    .hero-title {
+        font-size: 2.8rem;
+        font-weight: 600;
+        margin-top: 4rem;
+        margin-bottom: 0.5rem;
         text-align: center;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        height: 100px;
+        background: linear-gradient(90deg, #58a6ff, #bc85ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+        font-size: 1.1rem;
+        color: #8b949e;
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    /* Capability Pills */
+    .capability-container {
         display: flex;
-        flex-direction: column;
         justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .capability-pill {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        display: flex;
         align-items: center;
         gap: 0.5rem;
     }
     
-    .quick-action-card:hover {
-        background-color: #1a1a1a;
-        border-color: #404040;
-    }
-    
-    .card-icon {
-        font-size: 1.4rem;
-    }
-    
-    .card-label {
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: #d1d1d1;
-    }
-    
-    /* Agent Box */
-    .agent-header {
-        font-size: 0.95rem;
-        font-weight: 500;
-        margin-top: 2.5rem;
-        margin-bottom: 0.3rem;
-    }
-    .agent-sub {
-        font-size: 0.85rem;
-        color: #737373;
-        margin-bottom: 1.2rem;
-    }
-    
-    /* Input Workspace */
-    .workspace-input {
-        background-color: #171717;
-        border: 1px solid #262626;
-        border-radius: 16px;
-        padding: 1rem;
-        margin-bottom: 0.8rem;
-    }
-    
+    /* Workspace Input */
     .stTextArea textarea {
-        background-color: transparent !important;
-        border: none !important;
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
         color: #f7f7f7 !important;
-        font-size: 1rem !important;
-        resize: none !important;
+        font-size: 1.1rem !important;
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        transition: border-color 0.2s ease;
+    }
+    .stTextArea textarea:focus {
+        border-color: #58a6ff !important;
     }
     
-    /* Chip Bar */
-    .chip-bar {
-        display: flex;
-        gap: 0.6rem;
-        margin-bottom: 1rem;
+    /* Research Card (Results) */
+    .report-card {
+        background-color: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 2.5rem;
+        margin-top: 2rem;
+        line-height: 1.6;
     }
-    .chip {
-        padding: 0.35rem 0.8rem;
-        border-radius: 20px;
-        background-color: #171717;
-        border: 1px solid #262626;
-        font-size: 0.82rem;
-        color: #a3a3a3;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        cursor: pointer;
-    }
-    .chip:hover {
-        border-color: #404040;
-        color: #e5e5e5;
-    }
-    .chip-active {
-        background-color: #1e293b;
-        color: #3b82f6;
-        border-color: #1e3a8a;
-    }
-    
-    /* Get Started Checklist */
-    .checklist-item {
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
-        padding: 0.5rem 0;
-        color: #a3a3a3;
+    .source-link {
+        color: #58a6ff;
+        text-decoration: none;
         font-size: 0.9rem;
     }
-    .check-icon {
-        color: #3b82f6;
-        font-size: 1.2rem;
+    .source-link:hover {
+        text-decoration: underline;
     }
     
-    /* Usage Bars */
-    .usage-label { font-size: 0.75rem; color: #737373; }
-    .usage-metric { font-size: 0.85rem; font-weight: 500; margin-bottom: 2px; }
-    .progress-track { height: 4px; background-color: #262626; border-radius: 2px; }
-    .progress-fill { height: 100%; border-radius: 2px; }
-    
-    /* Research Reports */
-    .report-card {
-        background-color: #171717;
-        border: 1px solid #262626;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+    /* Action Buttons */
+    div.stButton > button {
+        background-color: #f7f7f7;
+        color: #0d0d0d;
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 0.6rem 2rem;
+        border: none;
+    }
+    div.stButton > button:hover {
+        background-color: #ffffff;
+        box-shadow: 0 0 15px rgba(255,255,255,0.2);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Sidebar Navigation
+# Advanced Configuration in Sidebar (Hidden by default)
 with st.sidebar:
-    st.markdown('<div class="sidebar-nav-item">isuru01online ⌄</div>', unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-nav-item active-nav">🏠 Home</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-nav-item">📚 Library</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-nav-item">🤖 Agent</div>', unsafe_allow_html=True)
-    
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    st.markdown("##### Private")
-    st.markdown('<div class="sidebar-nav-item">📁 Age reversal research</div>', unsafe_allow_html=True)
-    
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("##### Plan usage")
-    st.markdown('<div class="usage-metric">AI words/day <span style="float:right; color:#737373;">0/1000</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="progress-track"><div class="progress-fill" style="width: 5%; background-color: #238636;"></div></div>', unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<div class="usage-metric">Imports/day <span style="float:right; color:#737373;">0/5</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="progress-track"><div class="progress-fill" style="width: 10%; background-color: #238636;"></div></div>', unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.button("Upgrade", use_container_width=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-nav-item">💬 Feedback</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-nav-item">❓ Support</div>', unsafe_allow_html=True)
+    st.markdown("### ⚙️ Engine Settings")
+    API_URL = st.text_input("API URL", "http://localhost:8000")
+    PROVIDER = st.selectbox("LLM Provider", ["groq", "openai", "anthropic"], index=0)
+    st.markdown("---")
+    st.markdown("#### About the Engine")
+    st.write("This research agent differs from standard chatbots by performing **Deep Web Retrieval** and **Structured Synthesis** before responding.")
 
-    # Advanced Toggle
-    with st.expander("Advanced Settings"):
-        API_URL = st.text_input("API URL", "http://localhost:8000")
-        PROVIDER = st.selectbox("LLM Provider", ["groq", "openai", "anthropic"], index=0)
+# Main View
+st.markdown('<div class="hero-title">Deep Research Engine</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-sub">Autonomous AI Agent specialized in real-time information retrieval and comprehensive reporting.</div>', unsafe_allow_html=True)
 
-# Main Workspace
-st.markdown("##### Quick actions")
-c1, c2, c3, c4 = st.columns(4)
-with c1: st.markdown('<div class="quick-action-card"><span class="card-icon">📤</span><span class="card-label">Upload</span></div>', unsafe_allow_html=True)
-with c2: st.markdown('<div class="quick-action-card"><span class="card-icon">➕</span><span class="card-label">Create</span></div>', unsafe_allow_html=True)
-with c3: st.markdown('<div class="quick-action-card"><span class="card-icon">📄</span><span class="card-label">Chat with file</span></div>', unsafe_allow_html=True)
-with c4: st.markdown('<div class="quick-action-card"><span class="card-icon">📁</span><span class="card-label">Chat with folder</span></div>', unsafe_allow_html=True)
+# Capabilities Row
+st.markdown("""
+<div class="capability-container">
+    <div class="capability-pill">🌐 Web Search Integrated</div>
+    <div class="capability-pill">📊 Research Synthesis</div>
+    <div class="capability-pill">🔗 Multi-Source Citation</div>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown('<div class="agent-header">Agent</div>', unsafe_allow_html=True)
-st.markdown('<div class="agent-sub">Understand, research and write about anything</div>', unsafe_allow_html=True)
-
-# Input Workspace Container
+# Workspace
 with st.container():
-    # Chip Selection
-    st.markdown("""
-    <div class="chip-bar">
-        <div class="chip chip-active">@ Mention</div>
-        <div class="chip">⚙️ GPT OSS</div>
-        <div class="chip">📄 250 words ⌄</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Text Area
-    query_text = st.text_area(
-        "Agent Input",
-        placeholder="Enter your research query...",
-        label_visibility="collapsed",
-        key="query_input",
-        height=70
+    query = st.text_area(
+        "", 
+        placeholder="What would you like to research today?", 
+        key="research_query",
+        height=120
     )
     
-    # Submit Button
-    sc1, sc2, sc3 = st.columns([8, 1, 1.2])
-    with sc3:
-        if st.button("🚀 Research", use_container_width=True):
-            if query_text:
-                with st.spinner("Processing deep retrieval..."):
+    col1, col2, col3 = st.columns([4, 1, 1])
+    with col3:
+        if st.button("🚀 Start Research", use_container_width=True):
+            if query:
+                with st.spinner("Synthesizing research from multiple web sources..."):
                     try:
-                        response = requests.post(f"{API_URL}/research", json={"query": query_text, "provider": PROVIDER}, timeout=90)
+                        response = requests.post(
+                            f"{API_URL}/research",
+                            json={"query": query, "provider": PROVIDER},
+                            timeout=90
+                        )
                         if response.status_code == 200:
                             data = response.json()
-                            if "history" not in st.session_state: st.session_state.history = []
-                            st.session_state.history.append({"query": query_text, "response": data.get('answer'), "sources": data.get('sources', []), "provider": PROVIDER})
-                        else: st.error(f"API Error: {response.text}")
-                    except Exception as e: st.error(f"Search failed: {e}")
+                            if "results" not in st.session_state: st.session_state.results = []
+                            st.session_state.results.append({
+                                "query": query,
+                                "report": data.get('answer'),
+                                "sources": data.get('sources', []),
+                                "timestamp": time.strftime("%H:%M")
+                            })
+                        else:
+                            st.error(f"Engine Error: {response.text}")
+                    except Exception as e:
+                        st.error(f"Search failed: {e}")
 
-# Ready-made Questions
-st.markdown("<br>##### Suggested Research", unsafe_allow_html=True)
-suggestions = ["Competitive analysis of 7B-class LLMs", "Latest breakthroughs in Agentic AI architecture", "Future of autonomous research systems"]
-cols = st.columns(3)
-for idx, s in enumerate(suggestions):
-    with cols[idx]:
-        if st.button(f"🔍 {s}", key=f"s_{idx}", use_container_width=True):
-            # This doesn't auto-trigger yet but we show intent
-            st.info(f"Setting query to: {s}")
-
-# Get Started Guide
-st.markdown("<br>##### Get started", unsafe_allow_html=True)
-st.markdown('<div class="checklist-item"><span class="check-icon">✓</span> Chat with a file</div>', unsafe_allow_html=True)
-st.markdown('<div class="checklist-item"><span class="check-icon">✓</span> Add files to a folder and chat with them</div>', unsafe_allow_html=True)
-st.markdown('<div class="checklist-item"><span class="check-icon">✓</span> Create a new note</div>', unsafe_allow_html=True)
-st.markdown('<div class="checklist-item"><span style="color:#737373;">○ Search for papers with agent</span></div>', unsafe_allow_html=True)
-st.markdown('<div class="checklist-item"><span style="color:#737373;">○ Connect Zotero or Mendeley and import a file</span></div>', unsafe_allow_html=True)
-
-# Reports History
-if "history" in st.session_state and st.session_state.history:
+# Display Results
+if "results" in st.session_state and st.session_state.results:
     st.markdown("---")
-    st.markdown("#### 📑 Intelligence Reports")
-    for item in reversed(st.session_state.history):
-        with st.container():
-            st.markdown(f'<div class="report-card">', unsafe_allow_html=True)
-            st.markdown(f"**Research Target:** {item['query']}")
-            st.markdown("---")
-            st.markdown(item['response'])
-            if item['sources']:
-                st.markdown("**Sources:** " + ", ".join([f"[{s.get('title', 'Ref')}]({s.get('url', '#')})" for s in item['sources'][:5]]))
-            st.markdown('</div>', unsafe_allow_html=True)
+    for res in reversed(st.session_state.results):
+        st.markdown(f'<div class="report-card">', unsafe_allow_html=True)
+        st.markdown(f"### 📋 Research Report: {res['query']}")
+        st.markdown(f"<small style='color:#8b949e'>Generated at {res['timestamp']}</small>", unsafe_allow_html=True)
+        st.markdown("---")
+        
+        # Main Report Content
+        st.markdown(res['report'])
+        
+        # Sources Section
+        if res['sources']:
+            st.markdown("<br>#### 🔗 Verified Sources", unsafe_allow_html=True)
+            for s in res['sources']:
+                st.markdown(f"• **{s.get('title', 'Ref')}**: [Read more]({s.get('url', '#')})")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# Ready-made Suggestions (Minimalist)
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("##### Suggestions")
+s_col1, s_col2, s_col3 = st.columns(3)
+suggestions = [
+    "Competitive analysis of AI research agents 2026",
+    "Impact of agentic workflows on enterprise productivity",
+    "Technical breakdown of Google's latest Gemini reasoning models"
+]
+if s_col1.button(f"🔍 {suggestions[0]}"): 
+    st.session_state.research_query = suggestions[0]
+if s_col2.button(f"🔍 {suggestions[1]}"): 
+    st.session_state.research_query = suggestions[1]
+if s_col3.button(f"🔍 {suggestions[2]}"): 
+    st.session_state.research_query = suggestions[2]
