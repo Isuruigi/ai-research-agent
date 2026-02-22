@@ -25,16 +25,21 @@ logger = logging.getLogger(__name__)
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-# Get API key from environment (set in Railway/deployment)
-VALID_API_KEY = os.getenv("API_KEY", "your-secret-api-key-change-this")
+# Get API key from environment
+VALID_API_KEY = os.getenv("API_KEY", None)  # None = no auth required (open endpoint)
+
+# Rate limit: default 10/minute, configurable via env
+RATE_LIMIT = os.getenv("RATE_LIMIT", "10/minute")
 
 async def get_api_key(api_key: str = Security(api_key_header)):
-    """Validate API key"""
+    """Validate API key (optional - only enforced if API_KEY env var is set)"""
+    if VALID_API_KEY is None:
+        return None  # Open access
     if api_key == VALID_API_KEY:
         return api_key
     raise HTTPException(
         status_code=403,
-        detail="Invalid or missing API Key. Include X-API-Key header."
+        detail="Invalid or missing API Key."
     )
 
 # Initialize FastAPI
@@ -124,7 +129,7 @@ async def metrics():
 
 
 @app.post("/research", response_model=ResearchResponse)
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT)
 async def research_endpoint(
     request: Request, 
     req: ResearchRequest,
