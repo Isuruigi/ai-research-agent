@@ -1,190 +1,282 @@
-"""FastAPI application with Groq + Tavily integration"""
-from fastapi import FastAPI, HTTPException, Header
+"""FastAPI application"""
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from typing import Optional
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from langchain_core.messages import HumanMessage
+from .schemas import ResearchRequest, ResearchResponse, HealthResponse
+from ..agent.graph import agent
+from ..agent.memory import AgentMemory
+from ..middleware.logging_middleware import LoggingMiddleware
 import logging
+import uuid
 from datetime import datetime
+import asyncio
 import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-from groq import Groq
-from tavily import TavilyClient
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize clients
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+# API Key Security
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-# Request/Response Models
-class ResearchRequest(BaseModel):
-    query: str = Field(..., min_length=10, max_length=500)
-    session_id: Optional[str] = None
-    max_results: int = Field(default=5, ge=1, le=10)
-    provider: str = Field(default="groq", pattern="^(groq|openai|anthropic)$")
+# Get API key from environment (set in Railway/deployment)
+VALID_API_KEY = os.getenv("API_KEY", "your-secret-api-key-change-this")
 
-class ResearchResponse(BaseModel):
-    answer: str
-    sources: list = []
-    session_id: str
-    timestamp: str
-    provider: str
+async def get_api_key(api_key: str = Security(api_key_header)):
+    """Validate API key"""
+    if api_key == VALID_API_KEY:
+        return api_key
+    raise HTTPException(
+        status_code=403,
+        detail="Invalid or missing API Key. Include X-API-Key header."
+    )
 
 # Initialize FastAPI
 app = FastAPI(
     title="AI Research Agent API",
-    description="Production-Ready AI Research Agent built with Groq + Tavily",
+    description="""
+## Production-Ready AI Research Agent
+
+Built with LangGraph + RAG for comprehensive web research.
+
+### Features
+* Multi-stage research pipeline (search → scrape → synthesize)
+* Vector storage with ChromaDB for context retrieval
+* Streaming responses via WebSocket
+* Rate limiting and input validation
+* Session-based conversation memory
+
+### Usage
+1. Send POST request to `/research` with your query
+2. Or connect to WebSocket at `/ws/research` for streaming
+3. Receive comprehensive research report with cited sources
+
+### Tech Stack
+* **LLM**: GPT-4 Turbo
+* **Embeddings**: OpenAI text-embedding-3-small
+* **Vector DB**: ChromaDB
+* **Framework**: LangChain + LangGraph
+* **API**: FastAPI
+    """,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    contact={
+        "name": "Isuru Chathuranga",
+        "url": "https://isuruig.com",
+        "email": "your.email@example.com"
+    },
+    license_info={
+        "name": "MIT"
+    }
 )
+
+# Rate limiting
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Configure for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# API Key validation (optional)
-API_KEY = os.getenv("API_KEY", "demo-key")
+# Logging middleware
+app.add_middleware(LoggingMiddleware)
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info("AI Research Agent API starting up...")
-    logger.info("Groq API configured: ✓")
-    logger.info("Tavily API configured: ✓")
-    logger.info("Model: llama-3.3-70b-versatile")
-    logger.info("Docs available at: /docs")
+# Session storage
+sessions = {}
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        version="1.0.0",
+        timestamp=datetime.utcnow().isoformat()
+    )
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    from ..middleware.metrics import (
+        request_count, request_duration, 
+        active_connections, error_count
+    )
+    
+    # Simple metrics response (would use prometheus_client in production)
     return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
-        "service": "ai-research-agent",
-        "groq_configured": bool(os.getenv("GROQ_API_KEY")),
-        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
-        "anthropic_configured": bool(os.getenv("ANTHROPIC_API_KEY")),
-        "tavily_configured": bool(os.getenv("TAVILY_API_KEY"))
+        "requests_total": request_count._value._value if hasattr(request_count, '_value') else 0,
+        "active_connections": active_connections._value._value if hasattr(active_connections, '_value') else 0,
+        "errors_total": error_count._value._value if hasattr(error_count, '_value') else 0,
+        "status": "ok"
     }
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "AI Research Agent API",
-        "docs": "/docs",
-        "health": "/health"
-    }
 
 @app.post("/research", response_model=ResearchResponse)
-async def research(
-    request: ResearchRequest,
-    x_api_key: Optional[str] = Header(None)
+@limiter.limit("10/minute")
+async def research_endpoint(
+    request: Request, 
+    req: ResearchRequest,
+    api_key: str = Depends(get_api_key)
 ):
     """
-    Research endpoint - uses Groq LLM + Tavily search for real-time research
+    Execute research query
+    
+    - **query**: Research question (10-500 chars)
+    - **session_id**: Optional session ID for continuity
+    - **max_results**: Max search results (1-10)
     """
     try:
-        logger.info(f"Research query: {request.query}")
-        
         # Generate session ID if not provided
-        session_id = request.session_id or f"session_{datetime.now().timestamp()}"
+        session_id = req.session_id or str(uuid.uuid4())
         
-        # Step 1: Search with Tavily
-        logger.info("Searching with Tavily...")
-        search_results = tavily_client.search(
-            query=request.query,
-            max_results=request.max_results
-        )
+        # Initialize or get memory
+        if session_id not in sessions:
+            sessions[session_id] = AgentMemory(session_id)
         
-        # Extract search context
-        context = "\n\n".join([
-            f"Source: {result.get('title', 'N/A')}\nURL: {result.get('url', 'N/A')}\nContent: {result.get('content', '')}"
-            for result in search_results.get('results', [])
-        ])
+        memory = sessions[session_id]
+        memory.add_message("user", req.query)
         
-        sources = [
-            {
-                "title": result.get('title', 'N/A'),
-                "url": result.get('url', 'N/A'),
-                "snippet": result.get('content', '')[:200] + "..."
-            }
-            for result in search_results.get('results', [])
-        ]
+        # Execute agent
+        state = {
+            "messages": [HumanMessage(content=req.query)],
+            "session_id": session_id,
+            "research_findings": [],
+            "scraped_content": [],
+            "current_task": "research",
+            "provider": req.provider,
+            "error": None
+        }
         
-        # Step 2: Generate response with selected provider
-        logger.info(f"Generating response with {request.provider}...")
+        result = await agent.ainvoke(state)
         
-        system_prompt = """You are an expert AI research assistant. Your task is to provide comprehensive, well-structured answers based on the search results provided.
-
-Format your response with:
-- Clear headings using **bold** text
-- Bullet points for key information
-- Proper paragraph structure
-- Citations when referencing specific sources
-
-Be informative, accurate, and cite your sources."""
-
-        user_prompt = f"""Based on the following search results, provide a comprehensive answer to this question:
-
-**Question:** {request.query}
-
-**Search Results:**
-{context}
-
-Provide a well-structured, informative answer that synthesizes the information from these sources."""
-
-        # Use faster models or optimized parameters where possible
-        if request.provider == "openai":
-            llm = ChatOpenAI(model="gpt-4o", temperature=0.7, timeout=60)
-        elif request.provider == "anthropic":
-            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.7, timeout=60)
-        else:
-            # Groq is typically very fast
-            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7, timeout=60)
-
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ]
+        # Extract response
+        if result.get("error"):
+            raise HTTPException(status_code=500, detail=result["error"])
         
-        response = llm.invoke(messages)
-        answer = response.content
+        response_content = result["messages"][-1].content if result.get("messages") else "No response generated"
         
-        logger.info("Research completed successfully")
+        # Extract sources
+        sources = []
+        seen_urls = set()
+        for finding in result.get('research_findings', []):
+            url = finding.get('url', '')
+            if url and url not in seen_urls:
+                sources.append({
+                    "title": finding.get('title', 'Source'),
+                    "url": url
+                })
+                seen_urls.add(url)
+        
+        memory.add_message("assistant", response_content)
         
         return ResearchResponse(
-            answer=answer,
+            answer=response_content,
             sources=sources,
             session_id=session_id,
             timestamp=datetime.utcnow().isoformat(),
-            provider=request.provider
+            provider=req.provider,
+            confidence=0.85
         )
         
     except Exception as e:
-        logger.error(f"Research error: {str(e)}")
-        error_msg = f"Research failed: {str(e)}"
-        if "timeout" in str(e).lower():
-            error_msg = "Research timed out. The query might be too complex or the model is overloaded."
-        
-        return JSONResponse(
-            status_code=500,
-            content={"detail": error_msg}
-        )
+        logger.error(f"Research endpoint error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/ws/research")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for streaming research responses
+    """
+    await websocket.accept()
+    session_id = str(uuid.uuid4())
+    
+    logger.info(f"WebSocket connected: {session_id}")
+    
+    try:
+        while True:
+            # Receive query
+            data = await websocket.receive_json()
+            query = data.get("query", "")
+            
+            if not query:
+                await websocket.send_json({"error": "Empty query"})
+                continue
+            
+            # Validate
+            try:
+                req = ResearchRequest(query=query, session_id=session_id)
+            except Exception as e:
+                await websocket.send_json({"error": str(e)})
+                continue
+            
+            # Execute agent with streaming
+            state = {
+                "messages": [HumanMessage(content=query)],
+                "session_id": session_id,
+                "research_findings": [],
+                "scraped_content": [],
+                "current_task": "research",
+                "error": None
+            }
+            
+            await websocket.send_json({
+                "type": "status",
+                "message": "Starting research..."
+            })
+            
+            # Stream agent execution
+            async for chunk in agent.astream(state):
+                await websocket.send_json({
+                    "type": "chunk",
+                    "data": chunk
+                })
+                await asyncio.sleep(0.1)  # Small delay for UI rendering
+            
+            await websocket.send_json({
+                "type": "complete",
+                "message": "Research complete"
+            })
+            
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected: {session_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+        try:
+            await websocket.send_json({"error": str(e)})
+        except:
+            pass
+
+@app.on_event("startup")
+async def startup_event():
+    """Application startup"""
+    logger.info("AI Research Agent API starting up...")
+    logger.info("Docs available at: /docs")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Application shutdown"""
+    logger.info("AI Research Agent API shutting down...")
+    # Clean up sessions
+    sessions.clear()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "src.api.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
