@@ -151,12 +151,14 @@ Be informative, accurate, and cite your sources."""
 
 Provide a well-structured, informative answer that synthesizes the information from these sources."""
 
+        # Use faster models or optimized parameters where possible
         if request.provider == "openai":
-            llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+            llm = ChatOpenAI(model="gpt-4o", temperature=0.7, timeout=60)
         elif request.provider == "anthropic":
-            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.7)
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.7, timeout=60)
         else:
-            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+            # Groq is typically very fast
+            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7, timeout=60)
 
         messages = [
             SystemMessage(content=system_prompt),
@@ -178,4 +180,11 @@ Provide a well-structured, informative answer that synthesizes the information f
         
     except Exception as e:
         logger.error(f"Research error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Research failed: {str(e)}")
+        error_msg = f"Research failed: {str(e)}"
+        if "timeout" in str(e).lower():
+            error_msg = "Research timed out. The query might be too complex or the model is overloaded."
+        
+        return JSONResponse(
+            status_code=500,
+            content={"detail": error_msg}
+        )
