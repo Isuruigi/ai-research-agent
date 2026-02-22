@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
+COPY .env.example .env
 
 # Expose port (7860 for HF Spaces, 8000 for local/other platforms)
 EXPOSE 7860

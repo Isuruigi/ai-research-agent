@@ -14,6 +14,10 @@ load_dotenv()
 
 from groq import Groq
 from tavily import TavilyClient
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_groq import ChatGroq
+from langchain_core.messages import SystemMessage, HumanMessage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +32,14 @@ class ResearchRequest(BaseModel):
     query: str = Field(..., min_length=10, max_length=500)
     session_id: Optional[str] = None
     max_results: int = Field(default=5, ge=1, le=10)
+    provider: str = Field(default="groq", pattern="^(groq|openai|anthropic)$")
 
 class ResearchResponse(BaseModel):
     answer: str
     sources: list = []
     session_id: str
     timestamp: str
+    provider: str
 
 # Initialize FastAPI
 app = FastAPI(
@@ -70,8 +76,11 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
         "service": "ai-research-agent",
         "groq_configured": bool(os.getenv("GROQ_API_KEY")),
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "anthropic_configured": bool(os.getenv("ANTHROPIC_API_KEY")),
         "tavily_configured": bool(os.getenv("TAVILY_API_KEY"))
     }
 
@@ -120,8 +129,8 @@ async def research(
             for result in search_results.get('results', [])
         ]
         
-        # Step 2: Generate response with Groq
-        logger.info("Generating response with Groq...")
+        # Step 2: Generate response with selected provider
+        logger.info(f"Generating response with {request.provider}...")
         
         system_prompt = """You are an expert AI research assistant. Your task is to provide comprehensive, well-structured answers based on the search results provided.
 
@@ -142,17 +151,20 @@ Be informative, accurate, and cite your sources."""
 
 Provide a well-structured, informative answer that synthesizes the information from these sources."""
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            model="llama-3.3-70b-versatile",
-            temperature=0.7,
-            max_tokens=2000,
-        )
+        if request.provider == "openai":
+            llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+        elif request.provider == "anthropic":
+            llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.7)
+        else:
+            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
         
-        answer = chat_completion.choices[0].message.content
+        response = llm.invoke(messages)
+        answer = response.content
         
         logger.info("Research completed successfully")
         
@@ -160,7 +172,8 @@ Provide a well-structured, informative answer that synthesizes the information f
             answer=answer,
             sources=sources,
             session_id=session_id,
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.utcnow().isoformat(),
+            provider=request.provider
         )
         
     except Exception as e:
