@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import requests
-import time
+import random
 from datetime import datetime
 
 # ── PREMIUM UI CONFIGURATION ──────────────────────────────────────────────────
@@ -17,8 +17,10 @@ if "results" not in st.session_state:
     st.session_state.results = []
 if "theme" not in st.session_state:
     st.session_state.theme = "light"
+if "input_query" not in st.session_state:
+    st.session_state.input_query = ""
 
-# ── THEME PALETTE (Claude/Gemini Aesthetic) ───────────────────────────────────
+# ── THEME PALETTE ─────────────────────────────────────────────────────────────
 themes = {
     "dark": {
         "bg": "#0d0d0d",
@@ -33,29 +35,36 @@ themes = {
         "shadow": "rgba(0,0,0,0.6)"
     },
     "light": {
-        "bg": "#fcfaf8",        # warm ivory (Claude signature)
+        "bg": "#fcfaf8",
         "bg_sidebar": "#ffffff",
         "text": "#1d1d1f",
         "card_bg": "#ffffff",
         "border": "#e5e5e7",
         "sub_text": "#86868b",
         "input_bg": "#ffffff",
-        "btn_primary": "#d97757", # burnt orange accent
+        "btn_primary": "#d97757",
         "accent": "#c66d4f",
         "shadow": "rgba(0,0,0,0.08)"
     }
 }
 
-# Dynamic Greeting
-def get_greeting():
-    hour = datetime.now().hour
-    if hour < 12: return "Good morning"
-    elif hour < 17: return "Good afternoon"
-    else: return "Good evening"
-
 t = themes[st.session_state.theme]
 
-# ── EXHAUSTIVE CSS (The "No Bullshit" Version) ───────────────────────────────
+# ── QUOTE ENGINE ──────────────────────────────────────────────────────────────
+QUOTES = [
+    "“The goal of research is not to find facts, but to understand truth.”",
+    "“Intelligence is the ability to adapt to change.” — Stephen Hawking",
+    "“The beautiful thing about learning is that nobody can take it away from you.” — B.B. King",
+    "“In a world of data, insights are the ultimate currency.”",
+    "“Research is formalized curiosity. It is poking and prying with a purpose.” — Zora Neale Hurston",
+    "“The important thing is not to stop questioning.” — Albert Einstein",
+    "“Information is not knowledge.” — Albert Einstein",
+    "“The essence of the independent mind lies not in what it thinks, but in how it thinks.” — Christopher Hitchens"
+]
+if "current_quote" not in st.session_state:
+    st.session_state.current_quote = random.choice(QUOTES)
+
+# ── EXHAUSTIVE CSS (Premium Theming) ──────────────────────────────────────────
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -95,10 +104,10 @@ html, body, [class*="css"] {{
     color: {t['text']} !important;
     border: 1px solid {t['border']} !important;
     border-radius: 12px !important;
-    padding-right: 3.5rem !important; /* Extra room for eye icon */
+    padding-right: 3.5rem !important;
 }}
 
-/* Fix the eye icon position/color */
+/* Eye icon fix */
 button[aria-label="Show password"], button[aria-label="Hide password"] {{
     color: {t['sub_text']} !important;
     background: transparent !important;
@@ -106,7 +115,6 @@ button[aria-label="Show password"], button[aria-label="Hide password"] {{
 }}
 
 /* ── RADIO BUTTONS (Premium Chip Style) ── */
-/* Hide the default radio circle/dot */
 [data-testid="stRadio"] [role="radiogroup"] div[data-testid="stMarkdownContainer"] {{
     display: none !important;
 }}
@@ -134,7 +142,18 @@ button[aria-label="Show password"], button[aria-label="Hide password"] {{
     transform: translateY(-2px);
 }}
 
-/* Hero Typography */
+/* Hero Section */
+.hero-quote {{
+    font-size: 1.2rem;
+    font-style: italic;
+    color: {t['sub_text']};
+    margin-bottom: 2rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    line-height: 1.6;
+}}
 .hero-title {{
     font-size: 4.5rem;
     font-weight: 800;
@@ -144,6 +163,24 @@ button[aria-label="Show password"], button[aria-label="Hide password"] {{
     background: linear-gradient(135deg, {t['text']}, {t['sub_text']});
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}}
+
+/* Preset Chips */
+.preset-chip {{
+    display: inline-block;
+    padding: 8px 18px;
+    background: {t['card_bg']};
+    border: 1px solid {t['border']};
+    border-radius: 50px;
+    margin: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: {t['text']};
+    transition: all 0.2s;
+}}
+.preset-chip:hover {{
+    border-color: {t['btn_primary']};
+    background: {t['btn_primary']}11;
 }}
 
 /* Backend Status Pill */
@@ -172,7 +209,6 @@ div.stButton > button {{
     border-radius: 50px;
     font-weight: 600;
     padding: 0.8rem 2rem;
-    transition: all 0.3s ease;
 }}
 .main-btn div.stButton > button {{
     background-color: {t['btn_primary']} !important;
@@ -184,8 +220,7 @@ div.stButton > button {{
     box-shadow: 0 10px 30px {t['btn_primary']}33 !important;
 }}
 .main-btn div.stButton > button:hover {{
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 35px {t['btn_primary']}55 !important;
+    transform: translateY(-3px);
 }}
 
 /* Report Card */
@@ -206,51 +241,75 @@ div.stButton > button {{
 with st.sidebar:
     st.markdown("### ⚙️ Engine Settings")
     
-    current_theme = st.selectbox("Appearance", ["light", "dark"], index=0 if st.session_state.theme == "light" else 1)
+    current_theme = st.selectbox(
+        "Appearance", 
+        ["light", "dark"], 
+        index=0 if st.session_state.theme == "light" else 1,
+        help="Switch between Light (Ivory) and Dark themes."
+    )
     if current_theme != st.session_state.theme:
         st.session_state.theme = current_theme
         st.rerun()
 
-    API_URL = st.text_input("API URL", "http://localhost:8000")
-    
-    API_KEY = st.text_input(
-        "API Key",
-        value=os.environ.get("API_KEY", "your-secret-api-key-change-this"),
-        type="password",
-        help="Paste your API key here. It will not overlap with the eye icon."
+    API_URL = st.text_input(
+        "Backend URL", 
+        "http://localhost:8000",
+        help="The endpoint where your AI research engine is running (e.g., http://localhost:8000 or a specific HF Space URL)."
     )
     
-    PROVIDER = st.selectbox("LLM Provider", ["groq", "openai", "anthropic"], index=0)
+    API_KEY = st.text_input(
+        "Access Key (X-API-Key)",
+        value=os.environ.get("API_KEY", "your-secret-api-key-change-this"),
+        type="password",
+        help="The security token used to authenticate your requests to the backend."
+    )
+    
+    PROVIDER = st.selectbox(
+        "LLM Model Provider", 
+        ["groq", "openai", "anthropic"], 
+        index=0,
+        help="Choose which AI brain to use for synthesizing the research. Groq is typically fastest."
+    )
 
     st.markdown("---")
-    st.markdown("#### Engine Status")
+    st.markdown("#### Connectivity")
     try:
         health_resp = requests.get(f"{API_URL}/health", timeout=2)
         if health_resp.status_code == 200:
-            st.markdown('<div class="status-pill status-online">● Core Engine: Online</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status-pill status-online">● Core Engine: Ready</div>', unsafe_allow_html=True)
         else:
             st.markdown(f'<div class="status-pill status-offline">● Error: {health_resp.status_code}</div>', unsafe_allow_html=True)
     except Exception:
         st.markdown('<div class="status-pill status-offline">● Engine: Offline</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.info("Recursive search & synthesis powered by LangGraph.")
-
-# ── MAIN CONTENT ─────────────────────────────────────────────────────────────
+# ── HERO CONTENT ─────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div style='text-align: center; margin-top: 5rem;'>
-    <h1 class='hero-title'>{get_greeting()}</h1>
-    <h2 style='font-size: 2.5rem; font-weight: 400; color: {t['sub_text']}; margin-top: -10px;'>
-        I'm <span style='color:{t['btn_primary']}; font-weight: 700;'>Isuru</span>. Your intelligence layer.
+    <div class='hero-quote'>{st.session_state.current_quote}</div>
+    <h2 style='font-size: 3.5rem; font-weight: 800; letter-spacing: -0.05em; color: {t['text']}'>
+        I'm <span style='color:{t['btn_primary']}; font-weight: 800;'>Isuru</span>.
     </h2>
-    <p style='font-size: 1.3rem; color: {t['sub_text']}; max-width: 600px; margin: 2rem auto; font-weight: 400; line-height: 1.5;'>
-        I synthesize the web into verifiable, high-fidelity research reports. 
-        Scanning, verifying, and reporting in seconds.
-    </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ── RESEARCH INPUT ──────────────────────────────────────────────────────────
+# ── PREBUILT QUESTIONS ────────────────────────────────────────────────────────
+st.markdown("<br>", unsafe_allow_html=True)
+presets = [
+    "Latest AI agent trends for Q1 2026",
+    "Progress in room-temperature superconductors",
+    "Current state of commercial fusion energy",
+    "NVIDIA's PersonaPlex architecture details",
+    "Top 5 cybersecurity threats for financial apps"
+]
+
+cols = st.columns(len(presets))
+for i, p in enumerate(presets):
+    with cols[i]:
+        if st.button(p, key=f"pre_{i}", use_container_width=True):
+            st.session_state.input_query = p
+            st.rerun()
+
+# ── RESEARCH INPUT ────────────────────────────────────────────────────────────
 st.markdown("<br>", unsafe_allow_html=True)
 with st.container():
     col1, col2, col3 = st.columns([1, 10, 1])
@@ -258,22 +317,22 @@ with st.container():
         query = st.text_area(
             label="Research Query",
             label_visibility="collapsed",
-            value=st.session_state.get("input_query", ""),
-            placeholder="What would you like to research deeply?",
+            value=st.session_state.input_query,
+            placeholder="What mission-critical topic should I investigate today?",
             key="research_area",
-            height=150
+            height=120
         )
 
-        st.markdown(f"<div style='text-align:center; color:{t['sub_text']}; font-size:0.95rem; margin-top:2.5rem; font-weight:500;'>SELECT REPORT FIDELITY</div>", unsafe_allow_html=True)
-        depth_map = {"⚡ Brief": "brief", "📄 Detailed": "detailed", "🔬 Comprehensive": "comprehensive"}
+        st.markdown(f"<div style='text-align:center; color:{t['sub_text']}; font-size:0.95rem; margin-top:2.5rem; font-weight:600; letter-spacing:0.1em;'>REPORT FIDELITY</div>", unsafe_allow_html=True)
+        depth_map = {"⚡ Brief": "brief", "📄 Detailed": "detailed", "🔬 Deep Dive": "comprehensive"}
         depth_choice = st.radio("Depth", options=list(depth_map.keys()), index=1, horizontal=True, label_visibility="collapsed")
         DEPTH = depth_map[depth_choice]
         
         st.markdown('<div class="main-btn" style="text-align:center;">', unsafe_allow_html=True)
-        if st.button("🚀 Start Deep Research", key="go_btn"):
+        if st.button("🚀 Synthesize Insights", key="go_btn"):
             if query:
                 st.session_state.input_query = query
-                with st.spinner(f"Investigating '{query}'..."):
+                with st.spinner(f"Scanning web for '{query}'..."):
                     try:
                         headers = {"X-API-Key": API_KEY} if API_KEY else {}
                         resp = requests.post(f"{API_URL}/research", json={"query": query, "provider": PROVIDER, "depth": DEPTH}, headers=headers, timeout=300)
@@ -283,9 +342,11 @@ with st.container():
                                 "query": query, "report": data.get('answer'), "sources": data.get('sources', []),
                                 "timestamp": datetime.now().strftime("%H:%M"), "depth": DEPTH
                             })
+                            # Change quote for next search
+                            st.session_state.current_quote = random.choice(QUOTES)
                         elif resp.status_code == 403: st.error("🔒 Auth Token Invalid.")
-                        else: st.error(f"❌ Engine Error: {resp.text}")
-                    except Exception as e: st.error(f"📡 Connection Failed.")
+                        else: st.error(f"❌ Backend Error: {resp.text}")
+                    except Exception as e: st.error(f"📡 Backend Connection Failed.")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ── RESULTS ──────────────────────────────────────────────────────────────────
@@ -312,7 +373,7 @@ if st.session_state.results:
         
         if res.get('sources'):
             st.markdown("<br><br>### 🔗 Verified Sources", unsafe_allow_html=True)
-            for s in res['sources']:
-                st.markdown(f"- **{s.get('title', 'Source')}**: [{s.get('url', '#')}]({s.get('url', '#')})")
+            for i, s in enumerate(res['sources']):
+                st.markdown(f"{i+1}. **{s.get('title', 'Source')}**: [{s.get('url', '#')}]({s.get('url', '#')})")
         
         st.markdown("</div></div>", unsafe_allow_html=True)

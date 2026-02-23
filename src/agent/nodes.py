@@ -47,7 +47,7 @@ async def research_node(state: AgentState) -> Dict[str, Any]:
     
     try:
         query = state["messages"][-1].content
-        results = await search_web(query, max_results=5)
+        results = await search_web(query, max_results=10)
         
         return {
             "research_findings": results,
@@ -63,7 +63,7 @@ async def scrape_node(state: AgentState) -> Dict[str, Any]:
     
     try:
         # Extract URLs from search results
-        urls = [r.get('url') for r in state.get('research_findings', [])[:3]]
+        urls = [r.get('url') for r in state.get('research_findings', [])[:5]]
         urls = [u for u in urls if u]  # Filter None values
         
         if not urls:
