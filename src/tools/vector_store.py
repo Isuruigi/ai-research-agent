@@ -1,4 +1,11 @@
 """Vector storage and retrieval with ChromaDB"""
+try:
+    __import__('pysqlite3')
+    import sys
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass
+
 import chromadb
 from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
