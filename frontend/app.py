@@ -247,7 +247,11 @@ with st.container():
                     else:
                         st.error(f"Engine Error: {response.text}")
                 except Exception as e:
-                    st.error(f"Search failed: {e}")
+                    err = str(e)
+                    if "Connection refused" in err or "Failed to establish" in err or "Cannot connect" in err:
+                        st.error("Cannot connect to the research engine. The backend may still be starting up — please wait 30 seconds and try again.")
+                    else:
+                        st.error(f"Search failed: {e}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Differentiator Section (Short and Sweet)
