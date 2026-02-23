@@ -19,16 +19,27 @@ vector_store = VectorStore()
 
 def get_llm(provider: str):
     """Factory to get the selected LLM"""
-    if provider == "openai":
-        return ChatOpenAI(model="gpt-4o", temperature=0.7)
-    elif provider == "anthropic":
-        return ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.7)
-    else:
-        return ChatGroq(
-            model="llama-3.3-70b-versatile",
-            temperature=0.7,
-            api_key=os.getenv("GROQ_API_KEY")
-        )
+    try:
+        if provider == "openai":
+            return ChatOpenAI(model="gpt-4o", temperature=0.7)
+        elif provider == "anthropic":
+            return ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.7)
+        else:
+            # Default to Groq
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                logger.warning("GROQ_API_KEY not found in environment. Falling back to OpenAI if available.")
+                if os.getenv("OPENAI_API_KEY"):
+                    return ChatOpenAI(model="gpt-4o", temperature=0.7)
+            return ChatGroq(
+                model="llama-3.3-70b-versatile",
+                temperature=0.7,
+                api_key=api_key
+            )
+    except Exception as e:
+        logger.error(f"Failed to initialize LLM provider {provider}: {e}")
+        # Final fallback
+        return ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
 
 async def research_node(state: AgentState) -> Dict[str, Any]:
     """Execute web search based on user query"""
@@ -96,12 +107,12 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
             },
             "detailed": {
                 "label": "detailed report",
-                "instruction": "Write a DETAILED report (500-800 words). Use 4-5 bold section headings with bullet points under each. Cover key facts, insights, and takeaways.",
+                "instruction": "Write a DETAILED report (500-800 words). Start with an 'Executive Summary' section. Use 4-5 bold section headings with bullet points. Cover key facts, current trends, and critical analysis.",
                 "k": 5
             },
             "comprehensive": {
                 "label": "comprehensive deep-dive",
-                "instruction": "Write a COMPREHENSIVE deep-dive report (1000-1500 words). Use 6-8 bold section headings. Cover background context, current state, key players, comparisons, implications, and actionable takeaways. Be thorough.",
+                "instruction": "Write a COMPREHENSIVE deep-dive (1000-1500 words). Start with an 'Executive Summary'. Use 6-8 bold section headings. Cover historical context, current state, key players, future implications, and actionable takeaways. Use detailed analysis for each section.",
                 "k": 8
             }
         }
@@ -124,7 +135,7 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
             findings = state.get('research_findings', [])
             if not findings:
                 return {
-                    "messages": [AIMessage(content="I couldn't find relevant information for that query. Please try rephrasing or a different topic.")],
+                    "messages": [AIMessage(content="I couldn't find enough relevant information on the live web to generate a report. Please try rephrasing your query or checking the API settings.")],
                     "current_task": "complete"
                 }
             context = "\n\n---\n\n".join([
@@ -133,21 +144,22 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
             ])
         
         # Generate response
-        prompt = f"""You are an expert research assistant producing a {cfg['label']}.
+        prompt = f"""You are a world-class research analyst producing a {cfg['label']}.
 
-User Question: {query}
+User Query: {query}
 
 Research Findings:
 {context}
 
 Instructions:
 1. {cfg['instruction']}
-2. Cite sources by their site/publication name only — NO raw URLs inline
-3. Use **bold** headings and bullet points to structure the response
-4. If sources contradict each other, briefly note the different perspectives
-5. Do NOT add parenthetical URL citations — verified links appear separately below
+2. Cite sources by their site/publication name (e.g., "[The Verge report mention...]") — DO NOT use raw URLs inline.
+3. Use **Professional Formatting**: Clear headings, bold text for emphasis, and organized lists.
+4. Conclude with a 'Key Insights' section summarizing the most critical takeaways.
+5. If sources contradict each other, explicitly mention the discrepancy.
+6. Absolute Rule: Do NOT invent facts. Only use the provided research findings.
 
-Generate the {cfg['label']} now:"""
+Produce the {cfg['label']} now:"""
 
         llm = get_llm(provider)
         response = await llm.ainvoke(prompt)
