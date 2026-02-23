@@ -13,7 +13,7 @@ from ..agent.memory import AgentMemory
 from ..middleware.logging_middleware import LoggingMiddleware
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 import os
 
@@ -87,11 +87,11 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS
+# CORS — allow_credentials cannot be True when allow_origins=["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -99,8 +99,20 @@ app.add_middleware(
 # Logging middleware
 app.add_middleware(LoggingMiddleware)
 
-# Session storage
+# Session storage  {session_id: (AgentMemory, last_access_datetime)}
 sessions = {}
+SESSION_TTL_MINUTES = 30
+
+async def cleanup_sessions():
+    """Periodically remove sessions idle for more than SESSION_TTL_MINUTES"""
+    while True:
+        await asyncio.sleep(300)  # run every 5 minutes
+        cutoff = datetime.utcnow() - timedelta(minutes=SESSION_TTL_MINUTES)
+        expired = [sid for sid, (_, ts) in sessions.items() if ts < cutoff]
+        for sid in expired:
+            del sessions[sid]
+        if expired:
+            logger.info(f"Cleaned up {len(expired)} expired sessions")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -119,11 +131,10 @@ async def metrics():
         active_connections, error_count
     )
     
-    # Simple metrics response (would use prometheus_client in production)
     return {
-        "requests_total": request_count._value._value if hasattr(request_count, '_value') else 0,
-        "active_connections": active_connections._value._value if hasattr(active_connections, '_value') else 0,
-        "errors_total": error_count._value._value if hasattr(error_count, '_value') else 0,
+        "requests_total": int(request_count._metrics.get((), request_count)._value.get()) if request_count._metrics else 0,
+        "active_connections": int(active_connections._value.get()),
+        "errors_total": int(error_count._metrics.get((), error_count)._value.get()) if error_count._metrics else 0,
         "status": "ok"
     }
 
@@ -146,11 +157,11 @@ async def research_endpoint(
         # Generate session ID if not provided
         session_id = req.session_id or str(uuid.uuid4())
         
-        # Initialize or get memory
+        # Initialize or get memory, update last-access timestamp
         if session_id not in sessions:
-            sessions[session_id] = AgentMemory(session_id)
-        
-        memory = sessions[session_id]
+            sessions[session_id] = (AgentMemory(session_id), datetime.utcnow())
+        memory, _ = sessions[session_id]
+        sessions[session_id] = (memory, datetime.utcnow())
         memory.add_message("user", req.query)
         
         # Execute agent
@@ -185,6 +196,7 @@ async def research_endpoint(
                 })
                 seen_urls.add(url)
         
+        memory, _ = sessions[session_id]
         memory.add_message("assistant", response_content)
         
         return ResearchResponse(
@@ -234,6 +246,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "research_findings": [],
                 "scraped_content": [],
                 "current_task": "research",
+                "provider": data.get("provider", "groq"),
+                "depth": data.get("depth", "detailed"),
                 "error": None
             }
             
@@ -269,12 +283,12 @@ async def startup_event():
     """Application startup"""
     logger.info("AI Research Agent API starting up...")
     logger.info("Docs available at: /docs")
+    asyncio.create_task(cleanup_sessions())
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Application shutdown"""
     logger.info("AI Research Agent API shutting down...")
-    # Clean up sessions
     sessions.clear()
 
 if __name__ == "__main__":

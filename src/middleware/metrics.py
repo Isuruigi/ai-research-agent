@@ -1,8 +1,6 @@
 """Prometheus metrics"""
 from prometheus_client import Counter, Histogram, Gauge
-import time
 
-# Metrics
 request_count = Counter(
     'http_requests_total',
     'Total HTTP requests',
@@ -15,9 +13,16 @@ request_duration = Histogram(
     ['method', 'endpoint']
 )
 
-active_requests = Gauge(
-    'http_requests_active',
-    'Active HTTP requests'
+# Named active_connections to match main.py import
+active_connections = Gauge(
+    'http_connections_active',
+    'Active HTTP connections'
+)
+
+error_count = Counter(
+    'http_errors_total',
+    'Total HTTP errors',
+    ['endpoint']
 )
 
 agent_execution_time = Histogram(

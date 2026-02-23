@@ -62,21 +62,29 @@ class VectorStore:
     ) -> List[Document]:
         """Search for similar documents"""
         try:
+            # Check the collection exists and has documents before querying
+            try:
+                col = self.client.get_collection(collection_name)
+                if col.count() == 0:
+                    return []
+            except Exception:
+                return []  # Collection doesn't exist yet
+
             vectorstore = Chroma(
                 client=self.client,
                 collection_name=collection_name,
                 embedding_function=self.embeddings
             )
-            
+
             results = vectorstore.similarity_search(
                 query=query,
                 k=k,
                 filter=filter_metadata
             )
-            
+
             logger.info(f"Retrieved {len(results)} similar documents for '{query}'")
             return results
-            
+
         except Exception as e:
             logger.error(f"Similarity search failed: {e}")
             return []

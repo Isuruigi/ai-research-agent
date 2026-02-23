@@ -45,9 +45,9 @@ themes = {
 # Dynamic Greeting based on time
 def get_greeting():
     hour = datetime.now().hour
-    if hour < 12: return "Good morning, Isuru"
-    elif hour < 17: return "Good afternoon, Isuru"
-    else: return "Good evening, Isuru"
+    if hour < 12: return "Good morning"
+    elif hour < 17: return "Good afternoon"
+    else: return "Good evening"
 
 # Theme Toggle in Sidebar
 with st.sidebar:
@@ -59,7 +59,15 @@ with st.sidebar:
     
     API_URL = st.text_input("API URL", "http://localhost:8000")
     PROVIDER = st.selectbox("LLM Provider", ["groq", "openai", "anthropic"], index=0)
-    
+
+    # Live backend status check
+    try:
+        import urllib.request as _ur
+        _ur.urlopen(f"{API_URL}/health", timeout=3)
+        st.success("Backend: Online")
+    except Exception:
+        st.warning("Backend: Starting up... please wait a moment before searching.")
+
     st.markdown("---")
     st.markdown("#### The Agent Difference")
     st.info("Unlike standard chatbots, this engine performs real-time web retrieval, cross-references sources, and synthesizes long-form reports.")

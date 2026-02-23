@@ -62,8 +62,8 @@ class InputValidator:
             import uuid
             return str(uuid.uuid4())
         
-        # Must be UUID format
-        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', session_id):
+        # Must be alphanumeric/dash/underscore, max 128 chars
+        if not re.match(r'^[0-9a-zA-Z_\-]{1,128}$', session_id):
             raise HTTPException(
                 status_code=400,
                 detail="Invalid session ID format"

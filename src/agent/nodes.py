@@ -22,7 +22,7 @@ def get_llm(provider: str):
     if provider == "openai":
         return ChatOpenAI(model="gpt-4o", temperature=0.7)
     elif provider == "anthropic":
-        return ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.7)
+        return ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.7)
     else:
         return ChatGroq(
             model="llama-3.3-70b-versatile",
@@ -113,12 +113,24 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
             k=cfg["k"],
             collection_name=f"session_{session_id}"
         )
-        
-        # Build context
-        context = "\n\n---\n\n".join([
-            f"Source: {doc.metadata.get('source', 'Unknown')}\n{doc.page_content}"
-            for doc in relevant_docs
-        ])
+
+        # Fall back to raw search snippets when scraping yielded no content
+        if relevant_docs:
+            context = "\n\n---\n\n".join([
+                f"Source: {doc.metadata.get('source', 'Unknown')}\n{doc.page_content}"
+                for doc in relevant_docs
+            ])
+        else:
+            findings = state.get('research_findings', [])
+            if not findings:
+                return {
+                    "messages": [AIMessage(content="I couldn't find relevant information for that query. Please try rephrasing or a different topic.")],
+                    "current_task": "complete"
+                }
+            context = "\n\n---\n\n".join([
+                f"Source: {r.get('url', 'Unknown')}\n{r.get('content', r.get('snippet', ''))}"
+                for r in findings[:cfg["k"]]
+            ])
         
         # Generate response
         prompt = f"""You are an expert research assistant producing a {cfg['label']}.
