@@ -26,6 +26,11 @@ class ResearchRequest(BaseModel):
         pattern="^(groq|openai|anthropic)$",
         description="LLM provider to use"
     )
+    depth: str = Field(
+        default="detailed",
+        pattern="^(brief|detailed|comprehensive)$",
+        description="Report depth: brief, detailed, or comprehensive"
+    )
     
     @validator('query')
     def sanitize_query(cls, v):

@@ -161,6 +161,7 @@ async def research_endpoint(
             "scraped_content": [],
             "current_task": "research",
             "provider": req.provider,
+            "depth": req.depth,
             "error": None
         }
         

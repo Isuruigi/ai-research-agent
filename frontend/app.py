@@ -191,17 +191,48 @@ with st.container():
         key="research_input",
         height=100
     )
-    
+
+    # Depth Selector
+    st.markdown(f"<div style='text-align:center; color:{t['sub_text']}; font-size:0.8rem; margin: 8px 0 4px 0;'>Report Depth</div>", unsafe_allow_html=True)
+    depth_col1, depth_col2, depth_col3 = st.columns(3)
+    depth_map = {
+        "⚡ Brief": "brief",
+        "📄 Detailed": "detailed",
+        "🔬 Comprehensive": "comprehensive"
+    }
+    depth_labels = list(depth_map.keys())
+    depth_choice = st.radio(
+        "",
+        options=depth_labels,
+        index=1,
+        horizontal=True,
+        key="depth_selector",
+        label_visibility="collapsed"
+    )
+    DEPTH = depth_map[depth_choice]
+
+    depth_hints = {
+        "brief": "~300 words · fast · key facts only",
+        "detailed": "~600 words · balanced · insights + sources",
+        "comprehensive": "~1200 words · deep dive · full analysis"
+    }
+    st.markdown(f"<div style='text-align:center; color:{t['sub_text']}; font-size:0.75rem; margin-bottom:10px;'>{depth_hints[DEPTH]}</div>", unsafe_allow_html=True)
+
     st.markdown('<div class="research-btn" style="text-align: center; margin-top: 10px;">', unsafe_allow_html=True)
     if st.button("🚀 Start Deep Research", use_container_width=True):
         if query:
             st.session_state.input_query = query
-            with st.spinner("Analyzing web sources and synthesizing report..."):
+            spinner_labels = {
+                "brief": "Fetching key facts...",
+                "detailed": "Analyzing web sources and synthesizing report...",
+                "comprehensive": "Running deep research across all sources — this may take a moment..."
+            }
+            with st.spinner(spinner_labels[DEPTH]):
                 try:
                     response = requests.post(
                         f"{API_URL}/research",
-                        json={"query": query, "provider": PROVIDER},
-                        timeout=120
+                        json={"query": query, "provider": PROVIDER, "depth": DEPTH},
+                        timeout=180
                     )
                     if response.status_code == 200:
                         data = response.json()
@@ -210,7 +241,8 @@ with st.container():
                             "query": query,
                             "report": data.get('answer'),
                             "sources": data.get('sources', []),
-                            "timestamp": time.strftime("%H:%M")
+                            "timestamp": time.strftime("%H:%M"),
+                            "depth": DEPTH
                         })
                     else:
                         st.error(f"Engine Error: {response.text}")
@@ -229,15 +261,30 @@ with c3: st.markdown(f"<div style='text-align:center; font-size:0.85rem; color:{
 if "results" in st.session_state and st.session_state.results:
     st.markdown("<br><br>", unsafe_allow_html=True)
     for res in reversed(st.session_state.results):
+        # Use CSS class on a surrounding div but render all inner content via st.markdown
+        # so that markdown links ([text](url)) are properly clickable
+        st.markdown(f"""
+        <div class="report-card">
+            <h3>📋 Research Report</h3>
+            <p style="color:{t['sub_text']}; font-size:0.85rem; margin-bottom:0.5rem;">
+                🔍 {res['query']}
+            </p>
+            <small style='color:{t['sub_text']}'>Synthesized at {res['timestamp']}</small>
+            <hr style="border-color:{t['border']}; margin: 1rem 0;">
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Render report body OUTSIDE the HTML div so Streamlit processes markdown properly
         with st.container():
-            st.markdown(f'<div class="report-card">', unsafe_allow_html=True)
-            st.markdown(f"### 📋 Research Report: {res['query']}")
-            st.markdown(f"<small style='color:{t['sub_text']}'>Synthesized at {res['timestamp']}</small>", unsafe_allow_html=True)
-            st.markdown("---")
             st.markdown(res['report'])
-            if res['sources']:
-                st.markdown("<br>#### Verified Sources", unsafe_allow_html=True)
-                for s in res['sources']:
-                    st.markdown(f"• **{s.get('title', 'Ref')}**: [{s.get('url', 'Link')[:50]}...]({s.get('url', '#')})")
-            st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+
+        if res['sources']:
+            st.markdown(f"<div style='padding: 0 0 1rem 0;'>", unsafe_allow_html=True)
+            st.markdown("#### 🔗 Verified Sources")
+            for s in res['sources']:
+                title = s.get('title', 'Source')
+                url = s.get('url', '#')
+                st.markdown(f"- **{title}**: [{url[:60]}...]({url})")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)

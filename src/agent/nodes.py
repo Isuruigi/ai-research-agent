@@ -85,11 +85,32 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
         query = state["messages"][-1].content
         session_id = state.get("session_id", "default")
         provider = state.get("provider", "groq")
-        
+        depth = state.get("depth", "detailed")
+
+        # Depth configuration
+        depth_configs = {
+            "brief": {
+                "label": "concise summary",
+                "instruction": "Write a SHORT, punchy summary (200-350 words max). Use 2-3 short bullet-point sections. Skip subtleties, just cover the key facts.",
+                "k": 3
+            },
+            "detailed": {
+                "label": "detailed report",
+                "instruction": "Write a DETAILED report (500-800 words). Use 4-5 bold section headings with bullet points under each. Cover key facts, insights, and takeaways.",
+                "k": 5
+            },
+            "comprehensive": {
+                "label": "comprehensive deep-dive",
+                "instruction": "Write a COMPREHENSIVE deep-dive report (1000-1500 words). Use 6-8 bold section headings. Cover background context, current state, key players, comparisons, implications, and actionable takeaways. Be thorough.",
+                "k": 8
+            }
+        }
+        cfg = depth_configs.get(depth, depth_configs["detailed"])
+
         # Retrieve relevant context from vector store
         relevant_docs = vector_store.similarity_search(
             query=query,
-            k=5,
+            k=cfg["k"],
             collection_name=f"session_{session_id}"
         )
         
@@ -100,7 +121,7 @@ async def synthesis_node(state: AgentState) -> Dict[str, Any]:
         ])
         
         # Generate response
-        prompt = f"""You are a research assistant. Based on the following research findings, provide a comprehensive, well-structured answer to the user's question.
+        prompt = f"""You are an expert research assistant producing a {cfg['label']}.
 
 User Question: {query}
 
@@ -108,13 +129,13 @@ Research Findings:
 {context}
 
 Instructions:
-1. Synthesize information from multiple sources
-2. Cite sources when making specific claims
-3. Structure your response with clear sections
-4. Highlight key insights and actionable takeaways
-5. If information is contradictory, acknowledge different perspectives
+1. {cfg['instruction']}
+2. Cite sources by their site/publication name only — NO raw URLs inline
+3. Use **bold** headings and bullet points to structure the response
+4. If sources contradict each other, briefly note the different perspectives
+5. Do NOT add parenthetical URL citations — verified links appear separately below
 
-Generate a detailed research report:"""
+Generate the {cfg['label']} now:"""
 
         llm = get_llm(provider)
         response = await llm.ainvoke(prompt)

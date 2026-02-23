@@ -11,4 +11,5 @@ class AgentState(TypedDict):
     current_task: str
     session_id: str
     provider: str
+    depth: str
     error: str | None
