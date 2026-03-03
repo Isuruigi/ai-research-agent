@@ -1,102 +1,341 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Research Agent</title>
+    <title>Deep Research Engine — AI Agent</title>
+    <meta name="description"
+        content="Autonomous AI research agent powered by LangGraph + RAG. Not a chatbot — a multi-step research pipeline that searches, scrapes, and synthesizes information with citations.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1 class="logo">AI Research Agent</h1>
-                <button class="new-chat-btn" onclick="startNewChat()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14" />
-                    </svg>
-                    New Chat
-                </button>
-            </div>
-        </header>
+    <div class="app-shell">
 
-        <!-- Chat Container -->
-        <main class="chat-container">
-            <div class="messages" id="messages">
-                <!-- Welcome Message -->
-                <div class="welcome-message">
-                    <div class="welcome-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.5">
+        <!-- ══════════════════════ SIDEBAR ══════════════════════ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+
+                <!-- Brand -->
+                <div class="sidebar-brand">
+                    <div class="brand-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                         </svg>
                     </div>
-                    <h2>How can I help with your research today?</h2>
-                    <p>Ask me to research any topic and I'll provide comprehensive, cited information.</p>
+                    <div class="brand-text">
+                        <span class="brand-name">DeepResearch</span>
+                        <span class="brand-sub">Agentic Engine v1.0</span>
+                    </div>
+                </div>
+
+                <button class="new-session-btn" id="newSessionBtn" onclick="startNewSession()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    New Research Session
+                </button>
+
+                <!-- Session History -->
+                <div class="sidebar-section">
+                    <div class="sidebar-label">HISTORY</div>
+                    <div class="session-list" id="sessionList">
+                        <div class="session-empty">No research sessions yet</div>
+                    </div>
+                </div>
+
+                <!-- Config Section -->
+                <div class="sidebar-section config-section">
+                    <div class="sidebar-label">CONFIGURATION</div>
+
+                    <div class="config-field">
+                        <label>AI Model Provider</label>
+                        <div class="select-wrapper">
+                            <select id="providerSelect">
+                                <option value="groq">⚡ Groq — Llama 3.3 70B</option>
+                                <option value="openai">GPT-4o (OpenAI)</option>
+                                <option value="anthropic">Claude 3.7 Sonnet (Anthropic)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="config-field">
+                        <label>Research Depth</label>
+                        <div class="depth-chips" id="depthChips">
+                            <button class="depth-chip" data-value="brief" onclick="selectDepth('brief')">
+                                ⚡ Brief
+                            </button>
+                            <button class="depth-chip active" data-value="detailed" onclick="selectDepth('detailed')">
+                                📄 Detailed
+                            </button>
+                            <button class="depth-chip" data-value="comprehensive"
+                                onclick="selectDepth('comprehensive')">
+                                🔬 Deep Dive
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Advanced (collapsed by default) -->
+                    <details class="advanced-details">
+                        <summary class="advanced-summary">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
+                            </svg>
+                            Advanced
+                        </summary>
+                        <div class="advanced-body">
+                            <div class="config-field">
+                                <label>Backend URL</label>
+                                <input type="text" id="apiUrl" class="config-input" value="http://localhost:8000"
+                                    placeholder="http://localhost:8000">
+                            </div>
+                            <div class="config-field">
+                                <label>Gateway Key <span class="optional-tag">optional</span></label>
+                                <input type="password" id="apiKey" class="config-input"
+                                    placeholder="Leave blank if not set">
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Status -->
+                <div class="sidebar-bottom">
+                    <div class="status-indicator" id="statusIndicator">
+                        <div class="status-dot offline" id="statusDot"></div>
+                        <span id="statusText">Checking engine...</span>
+                    </div>
+                    <button class="check-status-btn" onclick="checkHealth()">Check</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ══════════════════════ MAIN CONTENT ══════════════════════ -->
+        <main class="main-content">
+
+            <!-- Mobile Header -->
+            <div class="mobile-header">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18" />
+                    </svg>
+                </button>
+                <span class="mobile-brand">DeepResearch</span>
+                <div class="mobile-status-dot" id="mobileStatus"></div>
+            </div>
+
+            <!-- Results container -->
+            <div class="results-container" id="resultsContainer">
+
+                <!-- ══ WELCOME HERO (shown when no results) ══ -->
+                <div class="welcome-hero" id="welcomeHero">
+
+                    <div class="hero-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="4" />
+                        </svg>
+                        AUTONOMOUS AI AGENT — NOT A CHATBOT
+                    </div>
+
+                    <h1 class="hero-title">
+                        Deep Research<br>
+                        <span class="hero-gradient">Engine</span>
+                    </h1>
+
+                    <p class="hero-sub">
+                        Ask any research question. I'll plan a strategy, search the live web,<br>
+                        read multiple sources, and synthesize a cited report — autonomously.
+                    </p>
+
+                    <!-- Differentiators -->
+                    <div class="diff-grid">
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.35-4.35" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Live Web Search</strong>
+                                <span>Searches real-time results via Tavily API, not a static knowledge base</span>
+                            </div>
+                        </div>
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Source Scraping</strong>
+                                <span>Actually reads and extracts content from web pages, not just titles</span>
+                            </div>
+                        </div>
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path
+                                        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Multi-Step Agent</strong>
+                                <span>Runs a LangGraph pipeline: Plan → Search → Scrape → Synthesize</span>
+                            </div>
+                        </div>
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Vector Memory</strong>
+                                <span>Stores research in ChromaDB — finds relevant prior context automatically</span>
+                            </div>
+                        </div>
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Cited Reports</strong>
+                                <span>Every claim is backed by a verifiable source URL — no hallucinations</span>
+                            </div>
+                        </div>
+                        <div class="diff-card">
+                            <div class="diff-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                </svg>
+                            </div>
+                            <div class="diff-text">
+                                <strong>Streaming Pipeline</strong>
+                                <span>Watch each agent step execute live via WebSocket — fully transparent</span>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Example Questions -->
-                    <div class="example-questions">
-                        <div class="example-card"
-                            onclick="useExample('What are the latest breakthroughs in quantum computing?')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M12 6v6l4 2" />
-                            </svg>
-                            <span>Latest breakthroughs in quantum computing</span>
+                    <div class="examples-section">
+                        <div class="examples-label">Try a research question →</div>
+                        <div class="example-cards">
+                            <div class="example-card"
+                                onclick="useExample('What are the latest breakthroughs in quantum computing in 2025?')">
+                                <div class="example-icon">⚛️</div>
+                                <span>Latest quantum computing breakthroughs in 2025</span>
+                            </div>
+                            <div class="example-card"
+                                onclick="useExample('How is artificial intelligence transforming healthcare diagnostics?')">
+                                <div class="example-icon">🏥</div>
+                                <span>How AI is transforming healthcare diagnostics</span>
+                            </div>
+                            <div class="example-card"
+                                onclick="useExample('What is the current state of commercial nuclear fusion energy?')">
+                                <div class="example-icon">⚡</div>
+                                <span>Current state of commercial nuclear fusion energy</span>
+                            </div>
+                            <div class="example-card"
+                                onclick="useExample('What are NVIDIA\'s latest AI chip architectures and their capabilities?')">
+                                <div class="example-icon">🖥️</div>
+                                <span>NVIDIA's latest AI chip architectures</span>
+                            </div>
                         </div>
-                        <div class="example-card"
-                            onclick="useExample('Explain the impact of artificial intelligence on healthcare')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                            </svg>
-                            <span>Impact of AI on healthcare</span>
+                    </div>
+                </div>
+
+                <!-- ══ RESEARCH RESULTS (injected here by JS) ══ -->
+                <div class="research-results" id="researchResults"></div>
+
+            </div>
+
+            <!-- ══════════════════════ INPUT AREA ══════════════════════ -->
+            <div class="input-area">
+
+                <!-- Agent Pipeline Tracker (hidden until research starts) -->
+                <div class="pipeline-tracker" id="pipelineTracker" style="display:none">
+                    <div class="pipeline-step" id="step-plan" data-step="plan">
+                        <div class="step-dot"></div>
+                        <span>Planning</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-step" id="step-search" data-step="search">
+                        <div class="step-dot"></div>
+                        <span>Searching</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-step" id="step-scrape" data-step="scrape">
+                        <div class="step-dot"></div>
+                        <span>Scraping</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-step" id="step-synthesize" data-step="synthesize">
+                        <div class="step-dot"></div>
+                        <span>Synthesizing</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-step" id="step-done" data-step="done">
+                        <div class="step-dot"></div>
+                        <span>Done</span>
+                    </div>
+                </div>
+
+                <!-- Input Box -->
+                <div class="input-box">
+                    <div class="input-wrapper" id="inputWrapper">
+                        <textarea id="queryInput"
+                            placeholder="Ask a research question... (Enter to send, Shift+Enter for newline)" rows="1"
+                            onkeydown="handleKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
+                        <div class="input-right">
+                            <div class="input-meta">
+                                <span class="input-provider-pill" id="inputProviderPill">Groq</span>
+                                <span class="input-depth-pill" id="inputDepthPill">Detailed</span>
+                            </div>
+                            <button class="send-button" id="sendBtn" onclick="sendQuery()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                                </svg>
+                            </button>
                         </div>
-                        <div class="example-card"
-                            onclick="useExample('What is climate change and how does it affect global ecosystems?')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                            </svg>
-                            <span>Climate change and global ecosystems</span>
-                        </div>
-                        <div class="example-card"
-                            onclick="useExample('How does blockchain technology work and what are its applications?')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7" />
-                                <rect x="14" y="3" width="7" height="7" />
-                                <rect x="14" y="14" width="7" height="7" />
-                                <rect x="3" y="14" width="7" height="7" />
-                            </svg>
-                            <span>Blockchain technology and applications</span>
-                        </div>
+                    </div>
+                    <div class="input-footer-text">
+                        Powered by LangGraph · Tavily Search · ChromaDB · FastAPI
                     </div>
                 </div>
             </div>
 
-            <!-- Input Area -->
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <textarea id="userInput" placeholder="Ask a research question..." rows="1"
-                        onkeydown="handleKeyPress(event)"></textarea>
-                    <button class="send-btn" onclick="sendMessage()" id="sendBtn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="input-footer">
-                    <span class="model-info">Powered by Groq + Tavily Search</span>
-                </div>
-            </div>
         </main>
     </div>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <script src="script.js"></script>
 </body>
