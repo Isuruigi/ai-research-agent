@@ -599,17 +599,29 @@ function exportToPDF(cardId) {
 </body>
 </html>`;
 
-    const popup = window.open('', '_blank', 'width=900,height=700');
-    if (!popup) {
-        alert('Pop-up blocked — please allow pop-ups for this page and try again.');
-        return;
+    // In body tag, trigger print after fonts load
+    const printHtmlFinal = printHtml.replace(
+        '<body>',
+        '<body onload="setTimeout(()=>window.print(),500)">'
+    );
+
+    const slug = query.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+
+    // Use Blob URL — avoids document.write() CSP restrictions on HF Space / iframes
+    const blob = new Blob([printHtmlFinal], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const newTab = window.open(blobUrl, '_blank');
+    if (!newTab) {
+        // Popup blocked — download as HTML so user can open it and Ctrl+P
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `research-${slug}-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     }
-    popup.document.open();
-    popup.document.write(printHtml);
-    popup.document.close();
-    popup.focus();
-    // Slight delay so fonts/images can load before print dialog
-    setTimeout(() => { popup.print(); }, 600);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
 // ── Export: Word ───────────────────────────────────────────────
