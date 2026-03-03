@@ -35,8 +35,8 @@ VALID_API_KEY = os.getenv("API_KEY", None)  # None = no auth required (open endp
 # Rate limit: default 10/minute per IP, configurable via env
 RATE_LIMIT = os.getenv("RATE_LIMIT", "10/minute")
 
-# Daily quota per IP (default 20 free queries per day)
-DAILY_QUOTA = int(os.getenv("DAILY_QUOTA", "20"))
+# Daily quota per IP (3 free queries per day — protects $3 API budget)
+DAILY_QUOTA = int(os.getenv("DAILY_QUOTA", "3"))
 
 # Demo mode: if True, forces depth='brief' to keep token usage low
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
